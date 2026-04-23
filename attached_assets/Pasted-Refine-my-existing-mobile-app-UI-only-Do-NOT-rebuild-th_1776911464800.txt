@@ -1,0 +1,95 @@
+Refine my existing mobile app UI only. Do NOT rebuild the app and do NOT change the calculation logic.
+
+Problem:
+Some sections inside the opening cards are wider than the phone screen. On mobile, content shifts to the right and becomes hard to view. I do NOT want horizontal scrolling.
+
+Goal:
+Make the entire app fully fit inside the mobile screen width, with all data visible within the display width itself.
+
+Requirements:
+
+1. Keep the current design style and calculations.
+2. Do NOT use horizontal scrolling.
+3. Make every section responsive so it fits inside the phone screen.
+
+Please apply these fixes:
+
+A. Global responsive fixes
+
+- Set all elements to "box-sizing: border-box"
+- Ensure app root uses:
+  - width: 100%
+  - max-width: 100vw
+  - overflow-x: hidden
+- Prevent any container from expanding beyond screen width
+
+B. Card layout
+
+- Each opening card must fully fit inside screen width
+- Reduce internal padding/margins slightly on mobile if needed
+- Use flexible widths instead of fixed widths
+- Make all rows wrap properly on small screens
+
+C. Input rows
+
+- Width and Height fields should stack vertically on small screens if needed
+- Stiffner lines and Channel override should stack vertically on small screens
+- Buttons like Add / Save / Share should wrap or stack on small screens
+- Model type and Gap size buttons should shrink or wrap neatly inside the screen
+
+D. Summary sections
+
+- Material Summary
+- Cost Breakdown
+- Profit Summary
+
+These should display in a mobile-friendly 2-column or stacked layout instead of wide horizontal rows.
+
+Example:
+Instead of one long row:
+Rope: 37 lines • 56.39 m | Channel: 2 pcs | Fasteners: 20 pcs | Stiffner: 1 • 1.83 m
+
+Use stacked or grid layout like:
+
+- Rope: 37 lines / 56.39 m
+- Channel: 2 pcs
+- Fasteners: 20 pcs
+- Stiffner: 1 line / 1.83 m
+
+E. Buttons and tabs
+
+- Gap size buttons (2", 3", 4") must fit within screen width
+- Vertical / Horizontal buttons must fit cleanly
+- If needed, reduce font size slightly on mobile only
+- Buttons should not overflow
+
+F. Opening card actions
+
+- Duplicate and Delete icons should stay inside card width
+- Card header should wrap neatly if title is long
+
+G. Typography
+
+- Keep text readable, but allow slightly smaller text on mobile
+- Long values should wrap instead of pushing layout wider
+
+H. CSS / layout rules
+Use responsive techniques such as:
+
+- flex-wrap: wrap
+- min-width: 0
+- width: 100%
+- max-width: 100%
+- grid with 1-column or 2-column mobile layout
+- media queries for smaller screens
+
+Important:
+Do not add horizontal scrolling.
+Do not let any content overflow outside the screen.
+Everything must fit inside the phone display cleanly.
+
+Deliver:
+
+- updated JSX/component layout
+- updated CSS / styles
+- mobile responsive card layout for all sections

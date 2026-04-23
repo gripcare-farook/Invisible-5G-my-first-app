@@ -22,9 +22,12 @@ export function Segmented<T extends string | number>({
 }: Props<T>) {
   const colors = useColors();
   return (
-    <View>
+    <View style={{ width: "100%", minWidth: 0 }}>
       {label ? (
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>
+        <Text
+          style={[styles.label, { color: colors.mutedForeground }]}
+          numberOfLines={1}
+        >
           {label}
         </Text>
       ) : null}
@@ -42,12 +45,11 @@ export function Segmented<T extends string | number>({
               onPress={() => onChange(opt.value)}
               style={[
                 styles.item,
-                active && {
-                  backgroundColor: colors.primary,
-                },
+                active && { backgroundColor: colors.primary },
               ]}
             >
               <Text
+                numberOfLines={1}
                 style={[
                   styles.itemText,
                   {
@@ -70,7 +72,7 @@ export function Segmented<T extends string | number>({
 const styles = StyleSheet.create({
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 12,
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 6,
@@ -84,12 +86,14 @@ const styles = StyleSheet.create({
   },
   item: {
     flex: 1,
-    paddingVertical: 12,
+    minWidth: 0,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
     alignItems: "center",
     borderRadius: 8,
   },
   itemText: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
+    fontSize: 13,
   },
 });

@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { LabeledInput } from "@/components/LabeledInput";
 import { Segmented } from "@/components/Segmented";
-import { StatRow } from "@/components/StatRow";
 import { useColors } from "@/hooks/useColors";
 import {
   GapInches,
@@ -68,12 +67,16 @@ export function OpeningCard({
             {index + 1}
           </Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
+        <View style={styles.headerText}>
+          <Text
+            style={[styles.title, { color: colors.foreground }]}
+            numberOfLines={1}
+          >
             {state.label.trim() || `Opening ${index + 1}`}
           </Text>
           <Text
             style={[styles.subtitle, { color: colors.mutedForeground }]}
+            numberOfLines={1}
           >
             {results.sqft > 0
               ? `${fmtNum(results.sqft)} sqft`
@@ -103,11 +106,7 @@ export function OpeningCard({
             },
           ]}
         >
-          <Feather
-            name="trash-2"
-            size={16}
-            color={colors.destructive}
-          />
+          <Feather name="trash-2" size={16} color={colors.destructive} />
         </Pressable>
       </View>
 
@@ -159,14 +158,14 @@ export function OpeningCard({
         <View style={styles.row}>
           <LabeledInput
             flex={1}
-            label="Stiffner Lines"
+            label="Stiffner"
             value={state.stiffnerLineCount}
             onChangeText={(v) => update("stiffnerLineCount", v)}
             suffix="lines"
           />
           <LabeledInput
             flex={1}
-            label="Channel Override"
+            label="Channel"
             value={state.channelOverride}
             onChangeText={(v) => update("channelOverride", v)}
             placeholder="auto"
@@ -184,24 +183,32 @@ export function OpeningCard({
               },
             ]}
           >
-            <StatRow
+            <MiniStat
               label="Rope"
-              value={`${results.ropeLineCount} lines · ${fmtNum(results.totalRopeMeters)} m`}
+              value={`${fmtNum(results.totalRopeMeters)} m`}
+              hint={`${results.ropeLineCount} lines`}
             />
-            <StatRow
+            <MiniStat
               label="Channel"
               value={`${results.channelPieces} pcs`}
             />
-            <StatRow
+            <MiniStat
               label="Fasteners"
               value={`${fmtNum(results.fastenerQty, 0)} pcs`}
             />
-            {results.stiffnerLineCount > 0 ? (
-              <StatRow
-                label="Stiffner"
-                value={`${results.stiffnerLineCount} · ${fmtNum(results.totalStiffnerMeters)} m`}
-              />
-            ) : null}
+            <MiniStat
+              label="Stiffner"
+              value={
+                results.stiffnerLineCount > 0
+                  ? `${fmtNum(results.totalStiffnerMeters)} m`
+                  : "—"
+              }
+              hint={
+                results.stiffnerLineCount > 0
+                  ? `${results.stiffnerLineCount} line${results.stiffnerLineCount === 1 ? "" : "s"}`
+                  : undefined
+              }
+            />
           </View>
         ) : null}
       </View>
@@ -209,52 +216,111 @@ export function OpeningCard({
   );
 }
 
+function MiniStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={miniStyles.cell}>
+      <Text
+        style={[miniStyles.label, { color: colors.mutedForeground }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[miniStyles.value, { color: colors.foreground }]}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      {hint ? (
+        <Text
+          style={[miniStyles.hint, { color: colors.mutedForeground }]}
+          numberOfLines={1}
+        >
+          {hint}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+const miniStyles = StyleSheet.create({
+  cell: {
+    width: "50%",
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    minWidth: 0,
+  },
+  label: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  value: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+    marginTop: 2,
+  },
+  hint: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    marginTop: 1,
+  },
+});
+
 const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    marginBottom: 14,
+    padding: 14,
+    marginBottom: 12,
+    width: "100%",
+    maxWidth: "100%",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     marginBottom: 14,
   },
   indexBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  indexText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-  },
-  title: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-  },
+  indexText: { fontFamily: "Inter_700Bold", fontSize: 13 },
+  headerText: { flex: 1, minWidth: 0 },
+  title: { fontFamily: "Inter_700Bold", fontSize: 15 },
   subtitle: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
     marginTop: 2,
   },
   iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   body: { gap: 12 },
-  row: { flexDirection: "row", gap: 10 },
+  row: { flexDirection: "row", gap: 8 },
   miniSummary: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     borderRadius: 10,
     borderWidth: 1,
-    padding: 12,
-    gap: 2,
+    padding: 8,
   },
 });

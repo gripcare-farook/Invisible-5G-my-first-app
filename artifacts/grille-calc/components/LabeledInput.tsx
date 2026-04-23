@@ -29,8 +29,11 @@ export function LabeledInput({
 }: Props) {
   const colors = useColors();
   return (
-    <View style={flex ? { flex } : undefined}>
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>
+    <View style={[{ minWidth: 0 }, flex ? { flex } : { width: "100%" }]}>
+      <Text
+        style={[styles.label, { color: colors.mutedForeground }]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
       <View
@@ -60,7 +63,7 @@ export function LabeledInput({
 const styles = StyleSheet.create({
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 12,
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 6,
@@ -70,13 +73,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    height: 52,
+    paddingHorizontal: 12,
+    height: 50,
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontFamily: "Inter_600SemiBold",
-    fontSize: 17,
+    fontSize: 16,
   },
   suffix: {
     fontFamily: "Inter_500Medium",

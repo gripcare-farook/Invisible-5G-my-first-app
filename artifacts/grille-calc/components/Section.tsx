@@ -19,12 +19,18 @@ export function Section({ title, subtitle, children, right }: Props) {
       ]}
     >
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
+        <View style={styles.headerText}>
+          <Text
+            style={[styles.title, { color: colors.foreground }]}
+            numberOfLines={2}
+          >
             {title}
           </Text>
           {subtitle ? (
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.subtitle, { color: colors.mutedForeground }]}
+              numberOfLines={2}
+            >
               {subtitle}
             </Text>
           ) : null}
@@ -40,18 +46,19 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    marginBottom: 14,
+    padding: 14,
+    marginBottom: 12,
+    width: "100%",
+    maxWidth: "100%",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 12,
+    gap: 8,
   },
-  title: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-  },
+  headerText: { flex: 1, minWidth: 0 },
+  title: { fontFamily: "Inter_700Bold", fontSize: 16 },
   subtitle: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,

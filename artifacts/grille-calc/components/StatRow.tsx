@@ -40,8 +40,8 @@ export function StatRow({ label, value, emphasis = "normal", color }: Props) {
         style={[
           styles.value,
           { color: valueColor },
-          emphasis === "strong" && { fontFamily: "Inter_700Bold", fontSize: 17 },
-          emphasis === "total" && { fontFamily: "Inter_700Bold", fontSize: 19 },
+          emphasis === "strong" && { fontFamily: "Inter_700Bold", fontSize: 16 },
+          emphasis === "total" && { fontFamily: "Inter_700Bold", fontSize: 18 },
         ]}
       >
         {value}
@@ -56,15 +56,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 4,
+    gap: 8,
   },
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 14,
+    fontSize: 13,
     flexShrink: 1,
+    minWidth: 0,
   },
   value: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
+    fontSize: 14,
     textAlign: "right",
+    flexShrink: 1,
+    minWidth: 0,
   },
 });

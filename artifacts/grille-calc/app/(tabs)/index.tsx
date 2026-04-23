@@ -398,7 +398,7 @@ export default function CalculatorScreen() {
         keyboardShouldPersistTaps="handled"
         style={{ flex: 1 }}
         contentContainerStyle={{
-          padding: 16,
+          padding: 12,
           paddingBottom: insets.bottom + 180,
         }}
       >
@@ -874,28 +874,30 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    gap: 6,
     borderTopWidth: 1,
   },
   actionBtn: {
     flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 14,
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
     borderRadius: 12,
     borderWidth: 1,
   },
   actionPrimary: {
-    flex: 1.4,
+    flex: 1.3,
     borderColor: "transparent",
   },
   actionText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 14,
+    fontSize: 13,
   },
   statusPill: {
     flexDirection: "row",

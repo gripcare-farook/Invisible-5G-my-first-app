@@ -102,7 +102,7 @@ export default function ProjectsScreen() {
         data={projects}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
-          padding: 16,
+          padding: 12,
           paddingBottom: insets.bottom + 100,
           flexGrow: 1,
         }}
