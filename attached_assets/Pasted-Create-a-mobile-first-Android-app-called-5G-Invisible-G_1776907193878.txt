@@ -1,0 +1,369 @@
+Create a mobile-first Android app called:
+
+“5G Invisible Grille Smart Calculator”
+
+This app is for an invisible grille contractor. It must calculate:
+
+1. Material requirement
+2. Cost
+3. Shipping / porter cost
+4. Profit
+
+based on Width, Height, Model Type, Gap size, and Site Location.
+
+---
+
+APP GOAL
+
+The app should help the user enter:
+
+* Width
+* Height
+* Vertical or Horizontal
+* Gap size (2 inch / 3 inch / 4 inch)
+* Stiffner line count
+* Site location
+
+And instantly show:
+
+* Rope required
+* Channel required
+* Fastener required
+* Stiffner required
+* Labour cost
+* Shipping / porter cost
+* Total cost
+* Profit
+
+---
+
+INPUT FIELDS
+
+1. Project Details
+
+* Width (feet)
+* Height (feet)
+* Model Type:
+
+  * Vertical
+  * Horizontal
+* Gap Size:
+
+  * 2 inch
+  * 3 inch
+  * 4 inch
+* Stiffner line count (manual input)
+* Project / client name (optional)
+
+Auto-calculate:
+
+* Sqft = Width × Height
+
+---
+
+2. Rope / Wire Calculation
+
+Gap size must affect rope quantity.
+
+Convert width and height into inches.
+
+IF Model = Vertical:
+
+* Number of rope lines = FLOOR(width in inches / selected gap in inches) + 1
+* Rope length per line = height in feet
+* Total rope length in feet = rope lines × height
+* Convert total rope to meters = total rope length in feet × 0.3048
+
+IF Model = Horizontal:
+
+* Number of rope lines = FLOOR(height in inches / selected gap in inches) + 1
+* Rope length per line = width in feet
+* Total rope length in feet = rope lines × width
+* Convert total rope to meters = total rope length in feet × 0.3048
+
+Show:
+
+* Rope line count
+* Total rope required in meters
+
+Note:
+
+* Smaller gap (2 inch) uses more material
+* Bigger gap (3 inch / 4 inch) uses less material
+
+---
+
+3. Channel Calculation
+
+Channel piece length = 10 feet
+
+IF Model = Vertical:
+
+* Channel use is width-based
+* Channel pieces = CEILING(width / 10) × 2
+
+IF Model = Horizontal:
+
+* Channel use is height-based
+* Channel pieces = CEILING(height / 10) × 2
+
+Allow manual override of channel count.
+
+Show:
+
+* Channel pieces required
+* Total channel feet
+
+---
+
+4. Fastener Calculation
+
+Rule:
+
+* 1 fastener per 1 foot of channel
+
+So:
+
+* Total channel feet = channel pieces × 10
+* Fastener quantity = total channel feet
+
+Show fastener quantity.
+
+---
+
+5. Stiffner Calculation
+
+User will input:
+
+* Number of stiffner lines
+
+IF Model = Vertical:
+
+* Each stiffner line length = width in feet
+
+IF Model = Horizontal:
+
+* Each stiffner line length = height in feet
+
+Total stiffner length in feet:
+= stiffner line count × line length
+
+Convert to meters:
+= total stiffner length in feet × 0.3048
+
+Show:
+
+* Stiffner line count
+* Total stiffner length in meters
+
+---
+
+6. Cost Inputs
+
+Editable defaults:
+
+* Wire cost per meter (default: 10 INR)
+* Labour cost per sqft (default: 40 INR)
+* Channel cost per piece (default: 1100 INR)
+* Fastener cost per piece (default: 15 INR)
+
+Stiffner cost mode:
+
+* Per piece
+* Per meter
+
+If per piece:
+
+* user enters stiffner cost per piece
+
+If per meter:
+
+* user enters stiffner cost per meter
+
+Manual input:
+
+* Other misc cost
+* Connector / joint cost (optional)
+
+---
+
+7. Shipping / Porter Cost Logic
+
+Base location must be saved as default:
+
+* Default base location = user’s office / godown / current base
+* Example default: Tambaram, Chennai
+
+App must ask for:
+
+* Site location input
+* User can type exact area / locality name
+* Example: Sholinganallur, Chennai
+
+Shipping / porter cost options:
+
+Option A:
+Manual shipping input
+
+* User enters porter / transport cost directly
+
+Option B:
+Distance-based estimate
+
+* Use saved rate per kilometer
+* User enters:
+
+  * estimated distance in km
+  * transport cost per km
+* App calculates estimated shipping cost
+
+Best design:
+Support both manual mode and distance estimate mode.
+
+Show:
+
+* Base location
+* Site location
+* Shipping mode
+* Shipping cost
+
+---
+
+8. Cost Calculation
+
+Wire cost =
+total rope meters × wire cost per meter
+
+Channel cost =
+channel pieces × channel cost per piece
+
+Fastener cost =
+fastener quantity × fastener cost per piece
+
+Stiffner cost =
+based on selected cost mode
+
+Labour cost =
+sqft × labour cost per sqft
+
+Total cost =
+Wire + Channel + Fastener + Stiffner + Labour + Shipping + Other misc
+
+Cost per sqft =
+Total cost / Sqft
+
+---
+
+9. Selling Price and Profit
+
+Input:
+
+* Selling price per sqft
+
+Calculate:
+
+* Profit per sqft = Selling price per sqft - Cost per sqft
+* Total profit = Profit per sqft × Sqft
+
+Also show:
+
+* Recommended selling price for target profit per sqft
+* Default target profit input = 100 INR per sqft
+
+Recommended Selling Price =
+Cost per sqft + target profit per sqft
+
+---
+
+10. Output Display
+
+Show clearly in big cards:
+
+Material Summary
+
+* Sqft
+* Rope line count
+* Rope required (meters)
+* Channel pieces
+* Fastener quantity
+* Stiffner line count
+* Stiffner required (meters)
+
+Cost Summary
+
+* Wire cost
+* Channel cost
+* Fastener cost
+* Stiffner cost
+* Labour cost
+* Shipping cost
+* Misc cost
+* Total cost
+* Cost per sqft
+
+Profit Summary
+
+* Selling price per sqft
+* Recommended selling price
+* Profit per sqft
+* Total profit
+
+Color logic:
+
+* Good profit = green
+* Low profit = yellow
+* Loss = red
+
+---
+
+11. Save and Share Features
+
+* Save project locally
+* Edit saved project
+* Duplicate previous project
+* Share summary in WhatsApp-friendly text
+* Export simple PDF/text quotation summary
+
+---
+
+12. UI Requirements
+
+* Android-first mobile UI
+* Very large buttons and fields
+* Fast site use
+* Works in portrait mode
+* Instant live calculation
+* Dark mode optional
+* Tamil-friendly labels optional
+* Clean professional contractor style
+
+---
+
+13. Advanced Features (Optional)
+
+* Preset templates:
+
+  * 50 sqft
+  * 100 sqft
+  * 150 sqft
+
+* Material wastage percentage input
+
+* Round-off option
+
+* GST toggle
+
+* Customer quotation mode
+
+* Internal cost mode
+
+---
+
+14. Important Notes
+
+This app is for internal contractor use.
+The app must prioritize speed, clarity, and practical site calculations.
+Do not build a generic calculator.
+Build a real contractor workflow tool for invisible grille jobs.
+
+---
