@@ -3,15 +3,19 @@ export type GapInches = 2 | 3 | 4;
 export type StiffnerCostMode = "perPiece" | "perMeter";
 export type ShippingMode = "manual" | "distance";
 
-export interface ProjectInputs {
+export interface Opening {
+  id: string;
+  label: string;
   width: number;
   height: number;
   modelType: ModelType;
   gapInches: GapInches;
   stiffnerLineCount: number;
-  clientName: string;
-
   channelOverride: number | null;
+}
+
+export interface SharedInputs {
+  clientName: string;
 
   wireCostPerMeter: number;
   labourCostPerSqft: number;
@@ -34,7 +38,7 @@ export interface ProjectInputs {
   targetProfitPerSqft: number;
 }
 
-export interface CalcResults {
+export interface OpeningResults {
   sqft: number;
   ropeLineCount: number;
   totalRopeFeet: number;
@@ -51,8 +55,30 @@ export interface CalcResults {
   fastenerCost: number;
   stiffnerCost: number;
   labourCost: number;
+
+  subtotal: number;
+}
+
+export interface ProjectTotals {
+  openings: OpeningResults[];
+
+  totalSqft: number;
+  totalRopeLines: number;
+  totalRopeMeters: number;
+  totalChannelPieces: number;
+  totalChannelFeet: number;
+  totalFasteners: number;
+  totalStiffnerLines: number;
+  totalStiffnerMeters: number;
+
+  wireCost: number;
+  channelCost: number;
+  fastenerCost: number;
+  stiffnerCost: number;
+  labourCost: number;
   shippingCost: number;
   otherCost: number;
+
   totalCost: number;
   costPerSqft: number;
 
@@ -63,10 +89,13 @@ export interface CalcResults {
 
 const FT_TO_M = 0.3048;
 
-export function calculate(i: ProjectInputs): CalcResults {
-  const width = num(i.width);
-  const height = num(i.height);
-  const gap = i.gapInches;
+export function calculateOpening(
+  o: Opening,
+  s: SharedInputs,
+): OpeningResults {
+  const width = num(o.width);
+  const height = num(o.height);
+  const gap = o.gapInches;
   const sqft = width * height;
 
   const widthInches = width * 12;
@@ -74,7 +103,7 @@ export function calculate(i: ProjectInputs): CalcResults {
 
   let ropeLineCount = 0;
   let lineLengthFt = 0;
-  if (i.modelType === "vertical") {
+  if (o.modelType === "vertical") {
     ropeLineCount = gap > 0 ? Math.floor(widthInches / gap) + 1 : 0;
     lineLengthFt = height;
   } else {
@@ -85,48 +114,31 @@ export function calculate(i: ProjectInputs): CalcResults {
   const totalRopeMeters = totalRopeFeet * FT_TO_M;
 
   const autoChannelPieces =
-    i.modelType === "vertical"
+    o.modelType === "vertical"
       ? Math.ceil(width / 10) * 2
       : Math.ceil(height / 10) * 2;
   const channelPieces =
-    i.channelOverride && i.channelOverride > 0
-      ? i.channelOverride
+    o.channelOverride && o.channelOverride > 0
+      ? o.channelOverride
       : autoChannelPieces;
   const totalChannelFeet = channelPieces * 10;
   const fastenerQty = totalChannelFeet;
 
-  const stiffnerLineLen = i.modelType === "vertical" ? width : height;
-  const stiffnerLineCount = num(i.stiffnerLineCount);
+  const stiffnerLineLen = o.modelType === "vertical" ? width : height;
+  const stiffnerLineCount = num(o.stiffnerLineCount);
   const totalStiffnerFeet = stiffnerLineCount * stiffnerLineLen;
   const totalStiffnerMeters = totalStiffnerFeet * FT_TO_M;
 
-  const wireCost = totalRopeMeters * num(i.wireCostPerMeter);
-  const channelCost = channelPieces * num(i.channelCostPerPiece);
-  const fastenerCost = fastenerQty * num(i.fastenerCostPerPiece);
+  const wireCost = totalRopeMeters * num(s.wireCostPerMeter);
+  const channelCost = channelPieces * num(s.channelCostPerPiece);
+  const fastenerCost = fastenerQty * num(s.fastenerCostPerPiece);
   const stiffnerCost =
-    i.stiffnerCostMode === "perPiece"
-      ? stiffnerLineCount * num(i.stiffnerCostPerPiece)
-      : totalStiffnerMeters * num(i.stiffnerCostPerMeter);
-  const labourCost = sqft * num(i.labourCostPerSqft);
-  const shippingCost =
-    i.shippingMode === "manual"
-      ? num(i.shippingCostManual)
-      : num(i.distanceKm) * num(i.costPerKm);
-  const otherCost = num(i.miscCost) + num(i.connectorCost);
+    s.stiffnerCostMode === "perPiece"
+      ? stiffnerLineCount * num(s.stiffnerCostPerPiece)
+      : totalStiffnerMeters * num(s.stiffnerCostPerMeter);
+  const labourCost = sqft * num(s.labourCostPerSqft);
 
-  const totalCost =
-    wireCost +
-    channelCost +
-    fastenerCost +
-    stiffnerCost +
-    labourCost +
-    shippingCost +
-    otherCost;
-  const costPerSqft = sqft > 0 ? totalCost / sqft : 0;
-
-  const profitPerSqft = num(i.sellingPricePerSqft) - costPerSqft;
-  const totalProfit = profitPerSqft * sqft;
-  const recommendedSellingPrice = costPerSqft + num(i.targetProfitPerSqft);
+  const subtotal = wireCost + channelCost + fastenerCost + stiffnerCost + labourCost;
 
   return {
     sqft,
@@ -138,6 +150,74 @@ export function calculate(i: ProjectInputs): CalcResults {
     fastenerQty,
     stiffnerLineCount,
     totalStiffnerFeet,
+    totalStiffnerMeters,
+    wireCost,
+    channelCost,
+    fastenerCost,
+    stiffnerCost,
+    labourCost,
+    subtotal,
+  };
+}
+
+export function calculateProject(
+  openings: Opening[],
+  s: SharedInputs,
+): ProjectTotals {
+  const results = openings.map((o) => calculateOpening(o, s));
+
+  let totalSqft = 0;
+  let totalRopeLines = 0;
+  let totalRopeMeters = 0;
+  let totalChannelPieces = 0;
+  let totalChannelFeet = 0;
+  let totalFasteners = 0;
+  let totalStiffnerLines = 0;
+  let totalStiffnerMeters = 0;
+  let wireCost = 0;
+  let channelCost = 0;
+  let fastenerCost = 0;
+  let stiffnerCost = 0;
+  let labourCost = 0;
+
+  for (const r of results) {
+    totalSqft += r.sqft;
+    totalRopeLines += r.ropeLineCount;
+    totalRopeMeters += r.totalRopeMeters;
+    totalChannelPieces += r.channelPieces;
+    totalChannelFeet += r.totalChannelFeet;
+    totalFasteners += r.fastenerQty;
+    totalStiffnerLines += r.stiffnerLineCount;
+    totalStiffnerMeters += r.totalStiffnerMeters;
+    wireCost += r.wireCost;
+    channelCost += r.channelCost;
+    fastenerCost += r.fastenerCost;
+    stiffnerCost += r.stiffnerCost;
+    labourCost += r.labourCost;
+  }
+
+  const shippingCost =
+    s.shippingMode === "manual"
+      ? num(s.shippingCostManual)
+      : num(s.distanceKm) * num(s.costPerKm);
+  const otherCost = num(s.miscCost) + num(s.connectorCost);
+
+  const totalCost =
+    wireCost + channelCost + fastenerCost + stiffnerCost + labourCost + shippingCost + otherCost;
+  const costPerSqft = totalSqft > 0 ? totalCost / totalSqft : 0;
+  const profitPerSqft = num(s.sellingPricePerSqft) - costPerSqft;
+  const totalProfit = profitPerSqft * totalSqft;
+  const recommendedSellingPrice = costPerSqft + num(s.targetProfitPerSqft);
+
+  return {
+    openings: results,
+    totalSqft,
+    totalRopeLines,
+    totalRopeMeters,
+    totalChannelPieces,
+    totalChannelFeet,
+    totalFasteners,
+    totalStiffnerLines,
     totalStiffnerMeters,
     wireCost,
     channelCost,

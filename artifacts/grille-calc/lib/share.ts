@@ -1,60 +1,88 @@
 import { Share } from "react-native";
-import { CalcResults, ProjectInputs, fmtINR, fmtNum } from "./calculations";
+import {
+  Opening,
+  ProjectTotals,
+  SharedInputs,
+  fmtINR,
+  fmtNum,
+} from "./calculations";
 
 export function buildSummaryText(
-  inputs: ProjectInputs,
-  r: CalcResults,
+  openings: Opening[],
+  shared: SharedInputs,
+  totals: ProjectTotals,
 ): string {
   const lines: string[] = [];
   lines.push("*5G INVISIBLE GRILLE - QUOTATION*");
-  if (inputs.clientName) lines.push(`Client: ${inputs.clientName}`);
+  if (shared.clientName) lines.push(`Client: ${shared.clientName}`);
+  if (shared.siteLocation) lines.push(`Site: ${shared.siteLocation}`);
   lines.push("");
-  lines.push("*PROJECT*");
+
+  openings.forEach((o, i) => {
+    const r = totals.openings[i];
+    if (!r) return;
+    const label = o.label.trim() || `Opening ${i + 1}`;
+    lines.push(`*${i + 1}. ${label}*`);
+    lines.push(
+      `   Size: ${fmtNum(o.width)} x ${fmtNum(o.height)} ft = ${fmtNum(r.sqft)} sqft`,
+    );
+    lines.push(
+      `   ${o.modelType === "vertical" ? "Vertical" : "Horizontal"} | Gap ${o.gapInches}"`,
+    );
+    lines.push(
+      `   Rope ${r.ropeLineCount} lines = ${fmtNum(r.totalRopeMeters)} m`,
+    );
+    lines.push(
+      `   Channel ${r.channelPieces} pcs | Fasteners ${fmtNum(r.fastenerQty, 0)}`,
+    );
+    if (r.stiffnerLineCount > 0) {
+      lines.push(
+        `   Stiffner ${r.stiffnerLineCount} lines = ${fmtNum(r.totalStiffnerMeters)} m`,
+      );
+    }
+    lines.push(`   Subtotal: ${fmtINR(r.subtotal)}`);
+    lines.push("");
+  });
+
+  lines.push("*MATERIAL TOTAL*");
+  lines.push(`Total Sqft:     ${fmtNum(totals.totalSqft)}`);
+  lines.push(`Rope:           ${fmtNum(totals.totalRopeMeters)} m`);
   lines.push(
-    `Size: ${fmtNum(inputs.width)} ft x ${fmtNum(inputs.height)} ft = ${fmtNum(r.sqft)} sqft`,
+    `Channel:        ${totals.totalChannelPieces} pcs (${fmtNum(totals.totalChannelFeet, 0)} ft)`,
   );
+  lines.push(`Fasteners:      ${fmtNum(totals.totalFasteners, 0)} pcs`);
   lines.push(
-    `Model: ${inputs.modelType === "vertical" ? "Vertical" : "Horizontal"}  |  Gap: ${inputs.gapInches}"`,
+    `Stiffner:       ${totals.totalStiffnerLines} lines = ${fmtNum(totals.totalStiffnerMeters)} m`,
   );
-  if (inputs.siteLocation) lines.push(`Site: ${inputs.siteLocation}`);
   lines.push("");
-  lines.push("*MATERIAL*");
-  lines.push(
-    `Rope: ${r.ropeLineCount} lines  =  ${fmtNum(r.totalRopeMeters)} m`,
-  );
-  lines.push(
-    `Channel: ${r.channelPieces} pcs  (${fmtNum(r.totalChannelFeet, 0)} ft)`,
-  );
-  lines.push(`Fasteners: ${fmtNum(r.fastenerQty, 0)} pcs`);
-  lines.push(
-    `Stiffner: ${r.stiffnerLineCount} lines  =  ${fmtNum(r.totalStiffnerMeters)} m`,
-  );
-  lines.push("");
+
   lines.push("*COST BREAKDOWN*");
-  lines.push(`Wire:      ${fmtINR(r.wireCost)}`);
-  lines.push(`Channel:   ${fmtINR(r.channelCost)}`);
-  lines.push(`Fastener:  ${fmtINR(r.fastenerCost)}`);
-  lines.push(`Stiffner:  ${fmtINR(r.stiffnerCost)}`);
-  lines.push(`Labour:    ${fmtINR(r.labourCost)}`);
-  lines.push(`Shipping:  ${fmtINR(r.shippingCost)}`);
-  if (r.otherCost > 0) lines.push(`Other:     ${fmtINR(r.otherCost)}`);
+  lines.push(`Wire:      ${fmtINR(totals.wireCost)}`);
+  lines.push(`Channel:   ${fmtINR(totals.channelCost)}`);
+  lines.push(`Fastener:  ${fmtINR(totals.fastenerCost)}`);
+  lines.push(`Stiffner:  ${fmtINR(totals.stiffnerCost)}`);
+  lines.push(`Labour:    ${fmtINR(totals.labourCost)}`);
+  lines.push(`Shipping:  ${fmtINR(totals.shippingCost)}`);
+  if (totals.otherCost > 0) lines.push(`Other:     ${fmtINR(totals.otherCost)}`);
   lines.push(`-------------------`);
-  lines.push(`*TOTAL COST: ${fmtINR(r.totalCost)}*`);
-  lines.push(`Cost / sqft: ${fmtINR(r.costPerSqft)}`);
+  lines.push(`*TOTAL COST: ${fmtINR(totals.totalCost)}*`);
+  lines.push(`Cost / sqft: ${fmtINR(totals.costPerSqft)}`);
   lines.push("");
+
   lines.push("*QUOTATION*");
-  lines.push(`Selling / sqft: ${fmtINR(inputs.sellingPricePerSqft)}`);
-  lines.push(`Recommended:    ${fmtINR(r.recommendedSellingPrice)}`);
-  lines.push(`Profit / sqft:  ${fmtINR(r.profitPerSqft)}`);
-  lines.push(`*Total Profit:  ${fmtINR(r.totalProfit)}*`);
+  lines.push(`Selling / sqft: ${fmtINR(shared.sellingPricePerSqft)}`);
+  lines.push(`Recommended:    ${fmtINR(totals.recommendedSellingPrice)}`);
+  lines.push(`Profit / sqft:  ${fmtINR(totals.profitPerSqft)}`);
+  lines.push(`*Total Profit:  ${fmtINR(totals.totalProfit)}*`);
   return lines.join("\n");
 }
 
 export async function shareSummary(
-  inputs: ProjectInputs,
-  r: CalcResults,
+  openings: Opening[],
+  shared: SharedInputs,
+  totals: ProjectTotals,
 ): Promise<void> {
-  const message = buildSummaryText(inputs, r);
+  const message = buildSummaryText(openings, shared, totals);
   try {
     await Share.share({ message });
   } catch {

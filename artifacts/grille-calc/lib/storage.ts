@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ProjectInputs } from "./calculations";
+import { Opening, SharedInputs } from "./calculations";
 
 const KEY_SETTINGS = "@grille/settings_v1";
-const KEY_PROJECTS = "@grille/projects_v1";
+const KEY_PROJECTS = "@grille/projects_v2";
 
 export interface Settings {
   baseLocation: string;
@@ -33,7 +33,8 @@ export interface SavedProject {
   name: string;
   createdAt: number;
   updatedAt: number;
-  inputs: ProjectInputs;
+  openings: Opening[];
+  shared: SharedInputs;
 }
 
 export async function loadSettings(): Promise<Settings> {

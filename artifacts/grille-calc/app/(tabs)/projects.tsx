@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
-import { calculate, fmtINR, fmtNum } from "@/lib/calculations";
+import { calculateProject, fmtINR, fmtNum } from "@/lib/calculations";
 import {
   SavedProject,
   deleteProject,
@@ -54,7 +54,8 @@ export default function ProjectsScreen() {
       name: `${p.name} (copy)`,
       createdAt: now,
       updatedAt: now,
-      inputs: { ...p.inputs },
+      openings: p.openings.map((o) => ({ ...o, id: newId() })),
+      shared: { ...p.shared },
     };
     await saveProject(copy);
     reload();
@@ -75,7 +76,8 @@ export default function ProjectsScreen() {
   };
 
   const onShare = async (p: SavedProject) => {
-    await shareSummary(p.inputs, calculate(p.inputs));
+    const totals = calculateProject(p.openings, p.shared);
+    await shareSummary(p.openings, p.shared, totals);
   };
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -113,9 +115,7 @@ export default function ProjectsScreen() {
                 size={42}
                 color={colors.mutedForeground}
               />
-              <Text
-                style={[styles.emptyTitle, { color: colors.foreground }]}
-              >
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
                 No saved projects
               </Text>
               <Text
@@ -130,16 +130,15 @@ export default function ProjectsScreen() {
           )
         }
         renderItem={({ item }) => {
-          const r = calculate(item.inputs);
-          const profit = r.profitPerSqft;
-          const profitColor =
-            !item.inputs.sellingPricePerSqft
-              ? colors.mutedForeground
-              : profit < 0
-                ? colors.destructive
-                : profit < 50
-                  ? colors.warning
-                  : colors.success;
+          const totals = calculateProject(item.openings, item.shared);
+          const profit = totals.profitPerSqft;
+          const profitColor = !item.shared.sellingPricePerSqft
+            ? colors.mutedForeground
+            : profit < 0
+              ? colors.destructive
+              : profit < 50
+                ? colors.warning
+                : colors.success;
           return (
             <Pressable
               onPress={() => onOpen(item)}
@@ -166,14 +165,22 @@ export default function ProjectsScreen() {
                       { color: colors.mutedForeground },
                     ]}
                   >
-                    {fmtNum(item.inputs.width)}×{fmtNum(item.inputs.height)} ft
-                    • {fmtNum(r.sqft)} sqft •{" "}
-                    {item.inputs.modelType === "vertical" ? "Vert" : "Horiz"}
+                    {item.openings.length} opening
+                    {item.openings.length === 1 ? "" : "s"} •{" "}
+                    {fmtNum(totals.totalSqft)} sqft
+                    {item.shared.siteLocation
+                      ? ` • ${item.shared.siteLocation}`
+                      : ""}
                   </Text>
                 </View>
-                <View style={[styles.profitBadge, { backgroundColor: profitColor + "22" }]}>
+                <View
+                  style={[
+                    styles.profitBadge,
+                    { backgroundColor: profitColor + "22" },
+                  ]}
+                >
                   <Text style={[styles.profitVal, { color: profitColor }]}>
-                    {fmtINR(r.totalProfit)}
+                    {fmtINR(totals.totalProfit)}
                   </Text>
                   <Text style={[styles.profitLbl, { color: profitColor }]}>
                     profit
@@ -181,11 +188,12 @@ export default function ProjectsScreen() {
                 </View>
               </View>
               <View style={styles.cardStats}>
-                <Stat label="Total" value={fmtINR(r.totalCost)} />
-                <Stat label="Cost/sqft" value={fmtINR(r.costPerSqft)} />
-                {item.inputs.siteLocation ? (
-                  <Stat label="Site" value={item.inputs.siteLocation} />
-                ) : null}
+                <Stat label="Total" value={fmtINR(totals.totalCost)} />
+                <Stat label="Cost/sqft" value={fmtINR(totals.costPerSqft)} />
+                <Stat
+                  label="Channels"
+                  value={`${totals.totalChannelPieces} pcs`}
+                />
               </View>
               <View
                 style={[
@@ -230,7 +238,10 @@ function Stat({ label, value }: { label: string; value: string }) {
       <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
         {label}
       </Text>
-      <Text style={[styles.statVal, { color: colors.foreground }]} numberOfLines={1}>
+      <Text
+        style={[styles.statVal, { color: colors.foreground }]}
+        numberOfLines={1}
+      >
         {value}
       </Text>
     </View>
@@ -262,14 +273,8 @@ function CardAction({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 18,
-  },
-  headerTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-  },
+  header: { paddingHorizontal: 20, paddingBottom: 18 },
+  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 22 },
   headerSubtitle: {
     fontFamily: "Inter_500Medium",
     fontSize: 13,
@@ -288,10 +293,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  cardTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-  },
+  cardTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
   cardMeta: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
@@ -303,21 +305,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "flex-end",
   },
-  profitVal: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-  },
+  profitVal: { fontFamily: "Inter_700Bold", fontSize: 14 },
   profitLbl: {
     fontFamily: "Inter_500Medium",
     fontSize: 10,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  cardStats: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
+  cardStats: { flexDirection: "row", gap: 12, marginBottom: 12 },
   statBlock: { flex: 1 },
   statLbl: {
     fontFamily: "Inter_500Medium",
@@ -343,10 +338,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 4,
   },
-  actionLbl: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-  },
+  actionLbl: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   empty: {
     flex: 1,
     alignItems: "center",
@@ -354,10 +346,7 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     gap: 12,
   },
-  emptyTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 17,
-  },
+  emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
   emptyText: {
     fontFamily: "Inter_500Medium",
     fontSize: 14,

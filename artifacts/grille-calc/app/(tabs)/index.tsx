@@ -6,7 +6,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,18 +14,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { LabeledInput } from "@/components/LabeledInput";
+import { OpeningCard, OpeningFormState } from "@/components/OpeningCard";
 import { Section } from "@/components/Section";
 import { Segmented } from "@/components/Segmented";
 import { StatRow } from "@/components/StatRow";
 import { useColors } from "@/hooks/useColors";
 import {
-  CalcResults,
-  GapInches,
-  ModelType,
-  ProjectInputs,
+  Opening,
+  ProjectTotals,
+  SharedInputs,
   ShippingMode,
   StiffnerCostMode,
-  calculate,
+  calculateProject,
   fmtINR,
   fmtNum,
 } from "@/lib/calculations";
@@ -41,15 +40,8 @@ import {
   saveProject,
 } from "@/lib/storage";
 
-interface FormState {
-  width: string;
-  height: string;
-  modelType: ModelType;
-  gapInches: GapInches;
-  stiffnerLineCount: string;
+interface SharedFormState {
   clientName: string;
-
-  channelOverride: string;
 
   wireCostPerMeter: string;
   labourCostPerSqft: string;
@@ -72,17 +64,22 @@ interface FormState {
   targetProfitPerSqft: string;
 }
 
-function buildInitialForm(s: Settings): FormState {
+function buildEmptyOpening(): OpeningFormState {
   return {
+    id: newId(),
+    label: "",
     width: "",
     height: "",
     modelType: "vertical",
     gapInches: 3,
     stiffnerLineCount: "0",
-    clientName: "",
-
     channelOverride: "",
+  };
+}
 
+function buildSharedFromSettings(s: Settings): SharedFormState {
+  return {
+    clientName: "",
     wireCostPerMeter: String(s.wireCostPerMeter),
     labourCostPerSqft: String(s.labourCostPerSqft),
     channelCostPerPiece: String(s.channelCostPerPiece),
@@ -92,32 +89,51 @@ function buildInitialForm(s: Settings): FormState {
     stiffnerCostPerMeter: String(s.stiffnerCostPerMeter),
     miscCost: "0",
     connectorCost: "0",
-
     baseLocation: s.baseLocation,
     siteLocation: "",
     shippingMode: "manual",
     shippingCostManual: "0",
     distanceKm: "0",
     costPerKm: String(s.costPerKm),
-
     sellingPricePerSqft: "",
     targetProfitPerSqft: String(s.targetProfitPerSqft),
   };
 }
 
-function formToInputs(f: FormState): ProjectInputs {
-  const num = (s: string) => {
-    const n = parseFloat(s);
-    return Number.isFinite(n) ? n : 0;
-  };
+const num = (s: string): number => {
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+};
+
+function formToOpening(f: OpeningFormState): Opening {
   return {
+    id: f.id,
+    label: f.label.trim(),
     width: num(f.width),
     height: num(f.height),
     modelType: f.modelType,
     gapInches: f.gapInches,
     stiffnerLineCount: num(f.stiffnerLineCount),
-    clientName: f.clientName.trim(),
     channelOverride: f.channelOverride ? num(f.channelOverride) : null,
+  };
+}
+
+function openingToForm(o: Opening): OpeningFormState {
+  return {
+    id: o.id,
+    label: o.label,
+    width: o.width ? String(o.width) : "",
+    height: o.height ? String(o.height) : "",
+    modelType: o.modelType,
+    gapInches: o.gapInches,
+    stiffnerLineCount: String(o.stiffnerLineCount || 0),
+    channelOverride: o.channelOverride ? String(o.channelOverride) : "",
+  };
+}
+
+function sharedToInputs(f: SharedFormState): SharedInputs {
+  return {
+    clientName: f.clientName.trim(),
     wireCostPerMeter: num(f.wireCostPerMeter),
     labourCostPerSqft: num(f.labourCostPerSqft),
     channelCostPerPiece: num(f.channelCostPerPiece),
@@ -138,32 +154,28 @@ function formToInputs(f: FormState): ProjectInputs {
   };
 }
 
-function inputsToForm(i: ProjectInputs): FormState {
+function sharedToForm(s: SharedInputs): SharedFormState {
   return {
-    width: String(i.width || ""),
-    height: String(i.height || ""),
-    modelType: i.modelType,
-    gapInches: i.gapInches,
-    stiffnerLineCount: String(i.stiffnerLineCount || 0),
-    clientName: i.clientName,
-    channelOverride: i.channelOverride ? String(i.channelOverride) : "",
-    wireCostPerMeter: String(i.wireCostPerMeter),
-    labourCostPerSqft: String(i.labourCostPerSqft),
-    channelCostPerPiece: String(i.channelCostPerPiece),
-    fastenerCostPerPiece: String(i.fastenerCostPerPiece),
-    stiffnerCostMode: i.stiffnerCostMode,
-    stiffnerCostPerPiece: String(i.stiffnerCostPerPiece),
-    stiffnerCostPerMeter: String(i.stiffnerCostPerMeter),
-    miscCost: String(i.miscCost),
-    connectorCost: String(i.connectorCost),
-    baseLocation: i.baseLocation,
-    siteLocation: i.siteLocation,
-    shippingMode: i.shippingMode,
-    shippingCostManual: String(i.shippingCostManual),
-    distanceKm: String(i.distanceKm),
-    costPerKm: String(i.costPerKm),
-    sellingPricePerSqft: String(i.sellingPricePerSqft || ""),
-    targetProfitPerSqft: String(i.targetProfitPerSqft),
+    clientName: s.clientName,
+    wireCostPerMeter: String(s.wireCostPerMeter),
+    labourCostPerSqft: String(s.labourCostPerSqft),
+    channelCostPerPiece: String(s.channelCostPerPiece),
+    fastenerCostPerPiece: String(s.fastenerCostPerPiece),
+    stiffnerCostMode: s.stiffnerCostMode,
+    stiffnerCostPerPiece: String(s.stiffnerCostPerPiece),
+    stiffnerCostPerMeter: String(s.stiffnerCostPerMeter),
+    miscCost: String(s.miscCost),
+    connectorCost: String(s.connectorCost),
+    baseLocation: s.baseLocation,
+    siteLocation: s.siteLocation,
+    shippingMode: s.shippingMode,
+    shippingCostManual: String(s.shippingCostManual),
+    distanceKm: String(s.distanceKm),
+    costPerKm: String(s.costPerKm),
+    sellingPricePerSqft: s.sellingPricePerSqft
+      ? String(s.sellingPricePerSqft)
+      : "",
+    targetProfitPerSqft: String(s.targetProfitPerSqft),
   };
 }
 
@@ -179,40 +191,23 @@ export default function CalculatorScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
 
-  const [form, setForm] = useState<FormState>(() =>
-    buildInitialForm(DEFAULT_SETTINGS),
+  const [openings, setOpenings] = useState<OpeningFormState[]>(() => [
+    buildEmptyOpening(),
+  ]);
+  const [shared, setShared] = useState<SharedFormState>(() =>
+    buildSharedFromSettings(DEFAULT_SETTINGS),
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  // Load settings on mount
   useEffect(() => {
     (async () => {
       const s = await loadSettings();
-      setForm((prev) => ({
-        ...prev,
-        wireCostPerMeter:
-          prev.wireCostPerMeter || String(s.wireCostPerMeter),
-        labourCostPerSqft:
-          prev.labourCostPerSqft || String(s.labourCostPerSqft),
-        channelCostPerPiece:
-          prev.channelCostPerPiece || String(s.channelCostPerPiece),
-        fastenerCostPerPiece:
-          prev.fastenerCostPerPiece || String(s.fastenerCostPerPiece),
-        stiffnerCostPerPiece:
-          prev.stiffnerCostPerPiece || String(s.stiffnerCostPerPiece),
-        stiffnerCostPerMeter:
-          prev.stiffnerCostPerMeter || String(s.stiffnerCostPerMeter),
-        costPerKm: prev.costPerKm || String(s.costPerKm),
-        baseLocation: prev.baseLocation || s.baseLocation,
-        targetProfitPerSqft:
-          prev.targetProfitPerSqft || String(s.targetProfitPerSqft),
-      }));
+      setShared(buildSharedFromSettings(s));
       setSettingsLoaded(true);
     })();
   }, []);
 
-  // Load project if navigated with projectId
   useFocusEffect(
     useCallback(() => {
       const id = params.projectId;
@@ -221,38 +216,111 @@ export default function CalculatorScreen() {
         const projects = await loadProjects();
         const p = projects.find((x) => x.id === id);
         if (p) {
-          setForm(inputsToForm(p.inputs));
+          setOpenings(
+            p.openings.length > 0
+              ? p.openings.map(openingToForm)
+              : [buildEmptyOpening()],
+          );
+          setShared(sharedToForm(p.shared));
           setEditingId(p.id);
         }
-        // Clear param so reload doesn't refire
         router.setParams({ projectId: "" });
       })();
     }, [params.projectId, router]),
   );
 
-  const inputs = useMemo(() => formToInputs(form), [form]);
-  const results = useMemo(() => calculate(inputs), [inputs]);
+  const sharedInputs = useMemo(() => sharedToInputs(shared), [shared]);
+  const openingInputs = useMemo(
+    () => openings.map(formToOpening),
+    [openings],
+  );
+  const totals: ProjectTotals = useMemo(
+    () => calculateProject(openingInputs, sharedInputs),
+    [openingInputs, sharedInputs],
+  );
 
-  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const updateShared = <K extends keyof SharedFormState>(
+    key: K,
+    value: SharedFormState[K],
+  ) => {
+    setShared((p) => ({ ...p, [key]: value }));
+  };
+
+  const updateOpening = (idx: number, next: OpeningFormState) => {
+    setOpenings((prev) => {
+      const copy = prev.slice();
+      copy[idx] = next;
+      return copy;
+    });
+  };
+
+  const addOpening = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setOpenings((prev) => [...prev, buildEmptyOpening()]);
+  };
+
+  const duplicateOpening = (idx: number) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setOpenings((prev) => {
+      const src = prev[idx];
+      if (!src) return prev;
+      const copy: OpeningFormState = {
+        ...src,
+        id: newId(),
+        label: src.label ? `${src.label} (copy)` : "",
+      };
+      const next = prev.slice();
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+  };
+
+  const removeOpening = (idx: number) => {
+    if (openings.length <= 1) return;
+    Alert.alert("Remove opening", `Delete Opening ${idx + 1}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setOpenings((prev) => prev.filter((_, i) => i !== idx));
+        },
+      },
+    ]);
   };
 
   const applyPreset = (w: number, h: number) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    setForm((p) => ({ ...p, width: String(w), height: String(h) }));
+    setOpenings((prev) => {
+      if (prev.length === 0) return prev;
+      const copy = prev.slice();
+      const last = copy[copy.length - 1];
+      if (!last) return prev;
+      copy[copy.length - 1] = {
+        ...last,
+        width: String(w),
+        height: String(h),
+      };
+      return copy;
+    });
   };
 
   const onReset = () => {
-    Alert.alert("Reset form", "Clear all current entries?", [
+    Alert.alert("Reset project", "Clear all openings and entries?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Reset",
         style: "destructive",
         onPress: async () => {
           const s = await loadSettings();
-          setForm(buildInitialForm(s));
+          setShared(buildSharedFromSettings(s));
+          setOpenings([buildEmptyOpening()]);
           setEditingId(null);
         },
       },
@@ -260,13 +328,17 @@ export default function CalculatorScreen() {
   };
 
   const onSave = async () => {
-    if (!form.width || !form.height) {
-      Alert.alert("Missing info", "Please enter width and height first.");
+    const hasAnySize = openings.some((o) => o.width && o.height);
+    if (!hasAnySize) {
+      Alert.alert(
+        "Missing info",
+        "Enter width and height for at least one opening.",
+      );
       return;
     }
     const name =
-      form.clientName.trim() ||
-      `${fmtNum(parseFloat(form.width))}x${fmtNum(parseFloat(form.height))} ft`;
+      shared.clientName.trim() ||
+      `${openings.length} opening${openings.length === 1 ? "" : "s"} · ${fmtNum(totals.totalSqft)} sqft`;
     const id = editingId ?? newId();
     const now = Date.now();
     const project: SavedProject = {
@@ -274,7 +346,8 @@ export default function CalculatorScreen() {
       name,
       createdAt: now,
       updatedAt: now,
-      inputs: formToInputs(form),
+      openings: openingInputs,
+      shared: sharedInputs,
     };
     await saveProject(project);
     setEditingId(id);
@@ -285,20 +358,39 @@ export default function CalculatorScreen() {
   };
 
   const onShare = async () => {
-    if (!form.width || !form.height) {
-      Alert.alert("Missing info", "Enter width and height to share.");
+    const hasAnySize = openings.some((o) => o.width && o.height);
+    if (!hasAnySize) {
+      Alert.alert(
+        "Missing info",
+        "Enter width and height for at least one opening.",
+      );
       return;
     }
-    await shareSummary(inputs, results);
+    await shareSummary(openingInputs, sharedInputs, totals);
   };
 
   if (!settingsLoaded) return null;
+
+  const profitColor = !shared.sellingPricePerSqft
+    ? colors.mutedForeground
+    : totals.profitPerSqft < 0
+      ? colors.destructive
+      : totals.profitPerSqft < 50
+        ? colors.warning
+        : colors.success;
+  const profitStatus = !shared.sellingPricePerSqft
+    ? "Enter selling price"
+    : totals.profitPerSqft < 0
+      ? "Loss"
+      : totals.profitPerSqft < 50
+        ? "Low Profit"
+        : "Good Profit";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Header
         title="5G Invisible Grille"
-        subtitle="Smart calculator for contractors"
+        subtitle={`${openings.length} opening${openings.length === 1 ? "" : "s"} · ${fmtNum(totals.totalSqft)} sqft`}
         onReset={onReset}
       />
       <KeyboardAwareScrollView
@@ -307,72 +399,18 @@ export default function CalculatorScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 120,
+          paddingBottom: insets.bottom + 180,
         }}
       >
-        {/* PROJECT */}
-        <Section title="Project" subtitle="Size and configuration">
+        {/* CLIENT */}
+        <Section title="Project" subtitle="Client and quick presets">
           <LabeledInput
             label="Client / Project Name (optional)"
-            value={form.clientName}
-            onChangeText={(v) => update("clientName", v)}
+            value={shared.clientName}
+            onChangeText={(v) => updateShared("clientName", v)}
             placeholder="e.g. Mr. Kumar - Sholinganallur"
             keyboardType="default"
           />
-          <View style={styles.row}>
-            <LabeledInput
-              flex={1}
-              label="Width"
-              value={form.width}
-              onChangeText={(v) => update("width", v)}
-              suffix="ft"
-              placeholder="0"
-            />
-            <LabeledInput
-              flex={1}
-              label="Height"
-              value={form.height}
-              onChangeText={(v) => update("height", v)}
-              suffix="ft"
-              placeholder="0"
-            />
-          </View>
-          <Segmented
-            label="Model Type"
-            options={[
-              { label: "Vertical", value: "vertical" },
-              { label: "Horizontal", value: "horizontal" },
-            ]}
-            value={form.modelType}
-            onChange={(v) => update("modelType", v)}
-          />
-          <Segmented
-            label="Gap Size"
-            options={[
-              { label: '2"', value: 2 },
-              { label: '3"', value: 3 },
-              { label: '4"', value: 4 },
-            ]}
-            value={form.gapInches}
-            onChange={(v) => update("gapInches", v)}
-          />
-          <View style={styles.row}>
-            <LabeledInput
-              flex={1}
-              label="Stiffner Lines"
-              value={form.stiffnerLineCount}
-              onChangeText={(v) => update("stiffnerLineCount", v)}
-              suffix="lines"
-            />
-            <LabeledInput
-              flex={1}
-              label="Channel Override"
-              value={form.channelOverride}
-              onChangeText={(v) => update("channelOverride", v)}
-              placeholder="auto"
-              suffix="pcs"
-            />
-          </View>
           <View style={styles.presetRow}>
             {PRESETS.map((p) => (
               <Pressable
@@ -395,60 +433,58 @@ export default function CalculatorScreen() {
               </Pressable>
             ))}
           </View>
+          <Text style={[styles.helpText, { color: colors.mutedForeground }]}>
+            Presets fill width/height into the last opening.
+          </Text>
         </Section>
 
-        {/* MATERIAL */}
-        <Section title="Material Summary" subtitle="Auto calculated">
-          <StatRow label="Total Sqft" value={`${fmtNum(results.sqft)} sqft`} emphasis="strong" />
-          <StatRow
-            label="Rope Lines"
-            value={`${results.ropeLineCount}`}
+        {/* OPENINGS */}
+        {openings.map((o, i) => (
+          <OpeningCard
+            key={o.id}
+            index={i}
+            total={openings.length}
+            state={o}
+            results={totals.openings[i]!}
+            onChange={(next) => updateOpening(i, next)}
+            onDuplicate={() => duplicateOpening(i)}
+            onRemove={() => removeOpening(i)}
+            canRemove={openings.length > 1}
           />
-          <StatRow
-            label="Rope Required"
-            value={`${fmtNum(results.totalRopeMeters)} m`}
-            emphasis="strong"
-          />
-          <StatRow
-            label="Channel Pieces"
-            value={`${results.channelPieces} pcs`}
-            emphasis="strong"
-          />
-          <StatRow
-            label="Total Channel"
-            value={`${fmtNum(results.totalChannelFeet, 0)} ft`}
-          />
-          <StatRow
-            label="Fasteners"
-            value={`${fmtNum(results.fastenerQty, 0)} pcs`}
-            emphasis="strong"
-          />
-          <StatRow
-            label="Stiffner Lines"
-            value={`${results.stiffnerLineCount}`}
-          />
-          <StatRow
-            label="Stiffner Required"
-            value={`${fmtNum(results.totalStiffnerMeters)} m`}
-            emphasis="strong"
-          />
-        </Section>
+        ))}
+
+        <Pressable
+          onPress={addOpening}
+          style={({ pressed }) => [
+            styles.addBtn,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.primary,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Feather name="plus-circle" size={20} color={colors.primary} />
+          <Text style={[styles.addBtnText, { color: colors.primary }]}>
+            Add Opening
+          </Text>
+        </Pressable>
 
         {/* COSTS */}
-        <Section title="Cost Inputs" subtitle="Editable rates">
+        <Section title="Cost Inputs" subtitle="Applied to all openings">
           <View style={styles.row}>
             <LabeledInput
               flex={1}
               label="Wire / m"
-              value={form.wireCostPerMeter}
-              onChangeText={(v) => update("wireCostPerMeter", v)}
+              value={shared.wireCostPerMeter}
+              onChangeText={(v) => updateShared("wireCostPerMeter", v)}
               suffix="₹"
             />
             <LabeledInput
               flex={1}
               label="Labour / sqft"
-              value={form.labourCostPerSqft}
-              onChangeText={(v) => update("labourCostPerSqft", v)}
+              value={shared.labourCostPerSqft}
+              onChangeText={(v) => updateShared("labourCostPerSqft", v)}
               suffix="₹"
             />
           </View>
@@ -456,15 +492,15 @@ export default function CalculatorScreen() {
             <LabeledInput
               flex={1}
               label="Channel / pc"
-              value={form.channelCostPerPiece}
-              onChangeText={(v) => update("channelCostPerPiece", v)}
+              value={shared.channelCostPerPiece}
+              onChangeText={(v) => updateShared("channelCostPerPiece", v)}
               suffix="₹"
             />
             <LabeledInput
               flex={1}
               label="Fastener / pc"
-              value={form.fastenerCostPerPiece}
-              onChangeText={(v) => update("fastenerCostPerPiece", v)}
+              value={shared.fastenerCostPerPiece}
+              onChangeText={(v) => updateShared("fastenerCostPerPiece", v)}
               suffix="₹"
             />
           </View>
@@ -474,21 +510,21 @@ export default function CalculatorScreen() {
               { label: "Per Piece", value: "perPiece" },
               { label: "Per Meter", value: "perMeter" },
             ]}
-            value={form.stiffnerCostMode}
-            onChange={(v) => update("stiffnerCostMode", v)}
+            value={shared.stiffnerCostMode}
+            onChange={(v) => updateShared("stiffnerCostMode", v)}
           />
-          {form.stiffnerCostMode === "perPiece" ? (
+          {shared.stiffnerCostMode === "perPiece" ? (
             <LabeledInput
               label="Stiffner Cost / Piece"
-              value={form.stiffnerCostPerPiece}
-              onChangeText={(v) => update("stiffnerCostPerPiece", v)}
+              value={shared.stiffnerCostPerPiece}
+              onChangeText={(v) => updateShared("stiffnerCostPerPiece", v)}
               suffix="₹"
             />
           ) : (
             <LabeledInput
               label="Stiffner Cost / Meter"
-              value={form.stiffnerCostPerMeter}
-              onChangeText={(v) => update("stiffnerCostPerMeter", v)}
+              value={shared.stiffnerCostPerMeter}
+              onChangeText={(v) => updateShared("stiffnerCostPerMeter", v)}
               suffix="₹"
             />
           )}
@@ -496,15 +532,15 @@ export default function CalculatorScreen() {
             <LabeledInput
               flex={1}
               label="Misc Cost"
-              value={form.miscCost}
-              onChangeText={(v) => update("miscCost", v)}
+              value={shared.miscCost}
+              onChangeText={(v) => updateShared("miscCost", v)}
               suffix="₹"
             />
             <LabeledInput
               flex={1}
               label="Connector / Joint"
-              value={form.connectorCost}
-              onChangeText={(v) => update("connectorCost", v)}
+              value={shared.connectorCost}
+              onChangeText={(v) => updateShared("connectorCost", v)}
               suffix="₹"
             />
           </View>
@@ -514,15 +550,15 @@ export default function CalculatorScreen() {
         <Section title="Shipping / Porter" subtitle="Site delivery cost">
           <LabeledInput
             label="Base Location"
-            value={form.baseLocation}
-            onChangeText={(v) => update("baseLocation", v)}
+            value={shared.baseLocation}
+            onChangeText={(v) => updateShared("baseLocation", v)}
             keyboardType="default"
             placeholder="Tambaram, Chennai"
           />
           <LabeledInput
             label="Site Location"
-            value={form.siteLocation}
-            onChangeText={(v) => update("siteLocation", v)}
+            value={shared.siteLocation}
+            onChangeText={(v) => updateShared("siteLocation", v)}
             keyboardType="default"
             placeholder="e.g. Sholinganallur"
           />
@@ -532,14 +568,14 @@ export default function CalculatorScreen() {
               { label: "Manual", value: "manual" },
               { label: "By Distance", value: "distance" },
             ]}
-            value={form.shippingMode}
-            onChange={(v) => update("shippingMode", v)}
+            value={shared.shippingMode}
+            onChange={(v) => updateShared("shippingMode", v)}
           />
-          {form.shippingMode === "manual" ? (
+          {shared.shippingMode === "manual" ? (
             <LabeledInput
               label="Porter / Transport Cost"
-              value={form.shippingCostManual}
-              onChangeText={(v) => update("shippingCostManual", v)}
+              value={shared.shippingCostManual}
+              onChangeText={(v) => updateShared("shippingCostManual", v)}
               suffix="₹"
             />
           ) : (
@@ -547,40 +583,75 @@ export default function CalculatorScreen() {
               <LabeledInput
                 flex={1}
                 label="Distance"
-                value={form.distanceKm}
-                onChangeText={(v) => update("distanceKm", v)}
+                value={shared.distanceKm}
+                onChangeText={(v) => updateShared("distanceKm", v)}
                 suffix="km"
               />
               <LabeledInput
                 flex={1}
                 label="Cost / km"
-                value={form.costPerKm}
-                onChangeText={(v) => update("costPerKm", v)}
+                value={shared.costPerKm}
+                onChangeText={(v) => updateShared("costPerKm", v)}
                 suffix="₹"
               />
             </View>
           )}
         </Section>
 
+        {/* TOTAL PROJECT SUMMARY */}
+        <Section
+          title="Total Project Summary"
+          subtitle={`Combined across ${openings.length} opening${openings.length === 1 ? "" : "s"}`}
+        >
+          <StatRow
+            label="Total Sqft"
+            value={`${fmtNum(totals.totalSqft)} sqft`}
+            emphasis="strong"
+          />
+          <StatRow
+            label="Total Rope"
+            value={`${fmtNum(totals.totalRopeMeters)} m`}
+          />
+          <StatRow
+            label="Total Channels"
+            value={`${totals.totalChannelPieces} pcs`}
+          />
+          <StatRow
+            label="Total Fasteners"
+            value={`${fmtNum(totals.totalFasteners, 0)} pcs`}
+          />
+          <StatRow
+            label="Total Stiffner"
+            value={`${totals.totalStiffnerLines} · ${fmtNum(totals.totalStiffnerMeters)} m`}
+          />
+        </Section>
+
         {/* COST SUMMARY */}
-        <Section title="Cost Summary" subtitle="Internal breakdown">
-          <StatRow label="Wire" value={fmtINR(results.wireCost)} />
-          <StatRow label="Channel" value={fmtINR(results.channelCost)} />
-          <StatRow label="Fastener" value={fmtINR(results.fastenerCost)} />
-          <StatRow label="Stiffner" value={fmtINR(results.stiffnerCost)} />
-          <StatRow label="Labour" value={fmtINR(results.labourCost)} />
-          <StatRow label="Shipping" value={fmtINR(results.shippingCost)} />
-          {results.otherCost > 0 ? (
-            <StatRow label="Misc / Connectors" value={fmtINR(results.otherCost)} />
+        <Section title="Cost Summary" subtitle="All openings combined">
+          <StatRow label="Wire" value={fmtINR(totals.wireCost)} />
+          <StatRow label="Channel" value={fmtINR(totals.channelCost)} />
+          <StatRow label="Fastener" value={fmtINR(totals.fastenerCost)} />
+          <StatRow label="Stiffner" value={fmtINR(totals.stiffnerCost)} />
+          <StatRow
+            label="Total Labour"
+            value={fmtINR(totals.labourCost)}
+            emphasis="strong"
+          />
+          <StatRow label="Shipping" value={fmtINR(totals.shippingCost)} />
+          {totals.otherCost > 0 ? (
+            <StatRow
+              label="Misc / Connectors"
+              value={fmtINR(totals.otherCost)}
+            />
           ) : null}
           <StatRow
             label="Total Cost"
-            value={fmtINR(results.totalCost)}
+            value={fmtINR(totals.totalCost)}
             emphasis="total"
           />
           <StatRow
             label="Cost / sqft"
-            value={fmtINR(results.costPerSqft)}
+            value={fmtINR(totals.costPerSqft)}
             emphasis="strong"
           />
         </Section>
@@ -591,19 +662,49 @@ export default function CalculatorScreen() {
             <LabeledInput
               flex={1}
               label="Selling / sqft"
-              value={form.sellingPricePerSqft}
-              onChangeText={(v) => update("sellingPricePerSqft", v)}
+              value={shared.sellingPricePerSqft}
+              onChangeText={(v) => updateShared("sellingPricePerSqft", v)}
               suffix="₹"
             />
             <LabeledInput
               flex={1}
               label="Target Profit / sqft"
-              value={form.targetProfitPerSqft}
-              onChangeText={(v) => update("targetProfitPerSqft", v)}
+              value={shared.targetProfitPerSqft}
+              onChangeText={(v) => updateShared("targetProfitPerSqft", v)}
               suffix="₹"
             />
           </View>
-          <ProfitDisplay results={results} hasSelling={!!form.sellingPricePerSqft} />
+          <StatRow
+            label="Recommended Price / sqft"
+            value={fmtINR(totals.recommendedSellingPrice)}
+            emphasis="strong"
+          />
+          <StatRow
+            label="Profit / sqft"
+            value={fmtINR(totals.profitPerSqft)}
+            color={profitColor}
+            emphasis="strong"
+          />
+          <StatRow
+            label="Total Profit"
+            value={fmtINR(totals.totalProfit)}
+            color={profitColor}
+            emphasis="total"
+          />
+          <View
+            style={[
+              styles.statusPill,
+              {
+                backgroundColor: profitColor + "22",
+                borderColor: profitColor,
+              },
+            ]}
+          >
+            <View style={[styles.dot, { backgroundColor: profitColor }]} />
+            <Text style={[styles.statusText, { color: profitColor }]}>
+              {profitStatus}
+            </Text>
+          </View>
         </Section>
       </KeyboardAwareScrollView>
 
@@ -618,6 +719,22 @@ export default function CalculatorScreen() {
           },
         ]}
       >
+        <Pressable
+          onPress={addOpening}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            {
+              backgroundColor: colors.secondary,
+              borderColor: colors.border,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <Feather name="plus" size={20} color={colors.foreground} />
+          <Text style={[styles.actionText, { color: colors.foreground }]}>
+            Add
+          </Text>
+        </Pressable>
         <Pressable
           onPress={onSave}
           style={({ pressed }) => [
@@ -647,71 +764,11 @@ export default function CalculatorScreen() {
         >
           <Feather name="share-2" size={20} color={colors.primaryForeground} />
           <Text
-            style={[
-              styles.actionText,
-              { color: colors.primaryForeground },
-            ]}
+            style={[styles.actionText, { color: colors.primaryForeground }]}
           >
-            Share Quote
+            Share
           </Text>
         </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function ProfitDisplay({
-  results,
-  hasSelling,
-}: {
-  results: CalcResults;
-  hasSelling: boolean;
-}) {
-  const colors = useColors();
-  const profitColor =
-    !hasSelling || results.profitPerSqft === 0
-      ? colors.mutedForeground
-      : results.profitPerSqft < 0
-        ? colors.destructive
-        : results.profitPerSqft < 50
-          ? colors.warning
-          : colors.success;
-  const status = !hasSelling
-    ? "Enter selling price"
-    : results.profitPerSqft < 0
-      ? "Loss"
-      : results.profitPerSqft < 50
-        ? "Low Profit"
-        : "Good Profit";
-  return (
-    <View>
-      <StatRow
-        label="Recommended Price / sqft"
-        value={fmtINR(results.recommendedSellingPrice)}
-        emphasis="strong"
-      />
-      <StatRow
-        label="Profit / sqft"
-        value={fmtINR(results.profitPerSqft)}
-        color={profitColor}
-        emphasis="strong"
-      />
-      <StatRow
-        label="Total Profit"
-        value={fmtINR(results.totalProfit)}
-        color={profitColor}
-        emphasis="total"
-      />
-      <View
-        style={[
-          styles.statusPill,
-          { backgroundColor: profitColor + "22", borderColor: profitColor },
-        ]}
-      >
-        <View style={[styles.dot, { backgroundColor: profitColor }]} />
-        <Text style={[styles.statusText, { color: profitColor }]}>
-          {status}
-        </Text>
       </View>
     </View>
   );
@@ -783,24 +840,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  row: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  presetRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 4,
-  },
+  row: { flexDirection: "row", gap: 10 },
+  presetRow: { flexDirection: "row", gap: 8 },
   presetChip: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
   },
-  presetText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
+  presetText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  helpText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+  },
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    marginBottom: 18,
+  },
+  addBtnText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
   },
   actionBar: {
     position: "absolute",
@@ -810,7 +876,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingTop: 12,
-    gap: 10,
+    gap: 8,
     borderTopWidth: 1,
   },
   actionBtn: {
@@ -818,7 +884,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
@@ -829,7 +895,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 15,
+    fontSize: 14,
   },
   statusPill: {
     flexDirection: "row",
@@ -842,11 +908,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 8,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   statusText: {
     fontFamily: "Inter_700Bold",
     fontSize: 12,
@@ -854,6 +916,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-
-// Keep ScrollView import for type purposes if not used elsewhere
-void ScrollView;
