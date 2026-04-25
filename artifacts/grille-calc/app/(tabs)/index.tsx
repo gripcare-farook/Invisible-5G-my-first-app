@@ -73,6 +73,7 @@ function buildEmptyOpening(): OpeningFormState {
     modelType: "vertical",
     gapInches: 3,
     stiffnerLineCount: "0",
+    channelInputMode: "pcs",
     channelOverride: "",
   };
 }
@@ -114,6 +115,7 @@ function formToOpening(f: OpeningFormState): Opening {
     modelType: f.modelType,
     gapInches: f.gapInches,
     stiffnerLineCount: num(f.stiffnerLineCount),
+    channelInputMode: f.channelInputMode,
     channelOverride: f.channelOverride ? num(f.channelOverride) : null,
   };
 }
@@ -127,6 +129,7 @@ function openingToForm(o: Opening): OpeningFormState {
     modelType: o.modelType,
     gapInches: o.gapInches,
     stiffnerLineCount: String(o.stiffnerLineCount || 0),
+    channelInputMode: o.channelInputMode ?? "pcs",
     channelOverride: o.channelOverride ? String(o.channelOverride) : "",
   };
 }

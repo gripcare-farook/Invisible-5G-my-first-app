@@ -2,6 +2,9 @@ export type ModelType = "vertical" | "horizontal";
 export type GapInches = 2 | 3 | 4;
 export type StiffnerCostMode = "perPiece" | "perMeter";
 export type ShippingMode = "manual" | "distance";
+export type ChannelInputMode = "pcs" | "feet";
+
+export const CHANNEL_STANDARD_LENGTH_FT = 10;
 
 export interface Opening {
   id: string;
@@ -11,6 +14,7 @@ export interface Opening {
   modelType: ModelType;
   gapInches: GapInches;
   stiffnerLineCount: number;
+  channelInputMode: ChannelInputMode;
   channelOverride: number | null;
 }
 
@@ -45,6 +49,10 @@ export interface OpeningResults {
   totalRopeMeters: number;
   channelPieces: number;
   totalChannelFeet: number;
+  channelInputMode: ChannelInputMode;
+  channelEnteredFeet: number;
+  channelUsedFeet: number;
+  channelBalanceFeet: number;
   fastenerQty: number;
   stiffnerLineCount: number;
   totalStiffnerFeet: number;
@@ -113,15 +121,35 @@ export function calculateOpening(
   const totalRopeFeet = ropeLineCount * lineLengthFt;
   const totalRopeMeters = totalRopeFeet * FT_TO_M;
 
+  const stdLen = CHANNEL_STANDARD_LENGTH_FT;
   const autoChannelPieces =
     o.modelType === "vertical"
-      ? Math.ceil(width / 10) * 2
-      : Math.ceil(height / 10) * 2;
-  const channelPieces =
-    o.channelOverride && o.channelOverride > 0
-      ? o.channelOverride
-      : autoChannelPieces;
-  const totalChannelFeet = channelPieces * 10;
+      ? Math.ceil(width / stdLen) * 2
+      : Math.ceil(height / stdLen) * 2;
+
+  const overrideVal =
+    o.channelOverride && o.channelOverride > 0 ? o.channelOverride : 0;
+  const inputMode: ChannelInputMode = o.channelInputMode ?? "pcs";
+
+  let channelPieces: number;
+  let channelEnteredFeet = 0;
+  let channelUsedFeet: number;
+  let channelBalanceFeet = 0;
+
+  if (overrideVal > 0 && inputMode === "feet") {
+    channelEnteredFeet = overrideVal;
+    channelPieces = Math.ceil(overrideVal / stdLen);
+    channelUsedFeet = overrideVal;
+    channelBalanceFeet = channelPieces * stdLen - overrideVal;
+  } else if (overrideVal > 0) {
+    channelPieces = overrideVal;
+    channelUsedFeet = channelPieces * stdLen;
+  } else {
+    channelPieces = autoChannelPieces;
+    channelUsedFeet = channelPieces * stdLen;
+  }
+
+  const totalChannelFeet = channelPieces * stdLen;
   const fastenerQty = totalChannelFeet;
 
   const stiffnerLineLen = o.modelType === "vertical" ? width : height;
@@ -147,6 +175,10 @@ export function calculateOpening(
     totalRopeMeters,
     channelPieces,
     totalChannelFeet,
+    channelInputMode: inputMode,
+    channelEnteredFeet,
+    channelUsedFeet,
+    channelBalanceFeet,
     fastenerQty,
     stiffnerLineCount,
     totalStiffnerFeet,

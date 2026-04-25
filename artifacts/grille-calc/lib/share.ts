@@ -33,8 +33,13 @@ export function buildSummaryText(
       `   Rope ${r.ropeLineCount} lines = ${fmtNum(r.totalRopeMeters)} m`,
     );
     lines.push(
-      `   Channel ${r.channelPieces} pcs | Fasteners ${fmtNum(r.fastenerQty, 0)}`,
+      `   Channel ${r.channelPieces} pcs (${fmtNum(r.totalChannelFeet, 0)} ft) | Fasteners ${fmtNum(r.fastenerQty, 0)}`,
     );
+    if (r.channelInputMode === "feet" && r.channelEnteredFeet > 0) {
+      lines.push(
+        `   Used ${fmtNum(r.channelUsedFeet)} ft | Balance ${fmtNum(r.channelBalanceFeet)} ft`,
+      );
+    }
     if (r.stiffnerLineCount > 0) {
       lines.push(
         `   Stiffner ${r.stiffnerLineCount} lines = ${fmtNum(r.totalStiffnerMeters)} m`,

@@ -6,6 +6,7 @@ import { LabeledInput } from "@/components/LabeledInput";
 import { Segmented } from "@/components/Segmented";
 import { useColors } from "@/hooks/useColors";
 import {
+  ChannelInputMode,
   GapInches,
   ModelType,
   OpeningResults,
@@ -20,6 +21,7 @@ export interface OpeningFormState {
   modelType: ModelType;
   gapInches: GapInches;
   stiffnerLineCount: string;
+  channelInputMode: ChannelInputMode;
   channelOverride: string;
 }
 
@@ -155,23 +157,32 @@ export function OpeningCard({
           value={state.gapInches}
           onChange={(v) => update("gapInches", v)}
         />
-        <View style={styles.row}>
-          <LabeledInput
-            flex={1}
-            label="Stiffner"
-            value={state.stiffnerLineCount}
-            onChangeText={(v) => update("stiffnerLineCount", v)}
-            suffix="lines"
-          />
-          <LabeledInput
-            flex={1}
-            label="Channel"
-            value={state.channelOverride}
-            onChangeText={(v) => update("channelOverride", v)}
-            placeholder="auto"
-            suffix="pcs"
-          />
-        </View>
+        <LabeledInput
+          label="Stiffner Lines"
+          value={state.stiffnerLineCount}
+          onChangeText={(v) => update("stiffnerLineCount", v)}
+          suffix="lines"
+        />
+        <Segmented
+          label="Channel Unit"
+          options={[
+            { label: "Pcs", value: "pcs" },
+            { label: "Feet", value: "feet" },
+          ]}
+          value={state.channelInputMode}
+          onChange={(v) => update("channelInputMode", v)}
+        />
+        <LabeledInput
+          label={
+            state.channelInputMode === "feet"
+              ? "Channel Length (leave blank for auto)"
+              : "Channel Pieces (leave blank for auto)"
+          }
+          value={state.channelOverride}
+          onChangeText={(v) => update("channelOverride", v)}
+          placeholder="auto"
+          suffix={state.channelInputMode === "feet" ? "ft" : "pcs"}
+        />
 
         {results.sqft > 0 ? (
           <View
@@ -191,7 +202,21 @@ export function OpeningCard({
             <MiniStat
               label="Channel"
               value={`${results.channelPieces} pcs`}
+              hint={`${fmtNum(results.totalChannelFeet, 0)} ft total`}
             />
+            {results.channelInputMode === "feet" &&
+            results.channelEnteredFeet > 0 ? (
+              <>
+                <MiniStat
+                  label="Used"
+                  value={`${fmtNum(results.channelUsedFeet)} ft`}
+                />
+                <MiniStat
+                  label="Balance"
+                  value={`${fmtNum(results.channelBalanceFeet)} ft`}
+                />
+              </>
+            ) : null}
             <MiniStat
               label="Fasteners"
               value={`${fmtNum(results.fastenerQty, 0)} pcs`}
