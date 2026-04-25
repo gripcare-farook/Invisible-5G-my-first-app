@@ -1,0 +1,36 @@
+Update the existing app only. Do not redesign, refactor, rename, remove, or alter any current feature, UI layout, calculations, labels, workflows, styles, database structure, or existing logic unless it is strictly required for the exact updates below.
+
+Important rules:
+1. Preserve all existing functionality exactly as it is.
+2. Make only the requested updates below.
+3. If anything is unclear, ask me first before changing code.
+4. After coding, show me exactly which files and lines were changed.
+5. Do not create a new app or replace existing pages/components.
+6. Keep current UI style and structure unchanged as much as possible.
+7. If a requested value is already correctly set, do not make unnecessary changes. Only update if needed.
+
+Required updates only:
+
+1. Set the default gap size to 2 inches.
+   - Wherever gap size input exists, the default value should be 2".
+   - Existing manual edit ability should remain unchanged if already available.
+   - If this is already correctly set, do not change anything unnecessarily.
+
+2. Set the default stiffner rate to Rs. 2.
+   - Wherever stiffner cost / stiffner rate per piece input exists, the default value should be Rs. 2.
+   - Existing manual edit ability should remain unchanged if already available.
+   - If this is already correctly set, do not change anything unnecessarily.
+
+3. Make only the minimum code changes required for the above two updates.
+   - Do not modify any unrelated calculations, UI elements, labels, or business logic.
+   - Do not change any existing user-editable behavior except setting these default values.
+
+Before applying any changes:
+- First inspect the relevant existing files and current default values.
+- If both values are already correct, report that no change is needed.
+- If anything is ambiguous, ask me first before proceeding.
+
+After completing:
+- Give me a short summary of what changed.
+- Mention whether the update was actually needed or already present.
+- List exactly which files and lines were changed.

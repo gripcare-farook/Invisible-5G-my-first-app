@@ -71,7 +71,7 @@ function buildEmptyOpening(): OpeningFormState {
     width: "",
     height: "",
     modelType: "vertical",
-    gapInches: 3,
+    gapInches: 2,
     stiffnerLineCount: "0",
     channelInputMode: "pcs",
     channelOverride: "",

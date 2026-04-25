@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   labourCostPerSqft: 40,
   channelCostPerPiece: 1100,
   fastenerCostPerPiece: 15,
-  stiffnerCostPerPiece: 250,
+  stiffnerCostPerPiece: 2,
   stiffnerCostPerMeter: 80,
   costPerKm: 25,
   targetProfitPerSqft: 100,
