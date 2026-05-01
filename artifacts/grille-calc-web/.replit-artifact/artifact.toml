@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/grille-calc-web/"
+title = "5G Grille Calculator Web"
+version = "1.0.0"
+id = "artifacts/grille-calc-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/grille-calc-web/" ]
+localPort = 25346
+
+[services.development]
+run = "pnpm --filter @workspace/grille-calc-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/grille-calc-web", "run", "build" ]
+publicDir = "artifacts/grille-calc-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25346"
+BASE_PATH = "/grille-calc-web/"
