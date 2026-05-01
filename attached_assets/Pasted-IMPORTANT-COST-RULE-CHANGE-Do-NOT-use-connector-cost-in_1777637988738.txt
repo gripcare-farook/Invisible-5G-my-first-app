@@ -1,0 +1,87 @@
+IMPORTANT COST RULE CHANGE
+
+Do NOT use connector cost in this project workflow.
+
+Business rule:
+- I do not use connector cost for this project type
+- If I use silicon, heavy fasteners, or any other extra small material, I will include those values inside Misc Cost manually
+- Therefore, remove connector cost from Google Sheet integration logic
+- Do not create any stock mapping for connector
+- Do not create any WeeklySettlement row for connector
+- Do not save connector_cost to Projects, OpeningDetails, WeeklySettlement, or any Google Sheet workflow
+- If connector cost field currently exists in the app UI, do not break the UI unless necessary, but exclude it completely from all Google Sheet sync, reporting, settlement, and stock deduction logic
+- Treat Misc Cost as the single field for extra project expenses such as silicon, heavy fasteners, support items, and other miscellaneous expenses
+
+UPDATED MATERIAL MAPPING
+Use only these inventory mappings:
+- Rope meters -> SSWIRE_2MM
+- Channel -> CHANNEL_STD
+- Fasteners -> FASTENER_STD
+- Stiffner meters -> STIFFNER_STD
+
+No connector mapping should exist.
+
+UPDATED PROJECTS SHEET COLUMNS
+Use these columns:
+- saved_at
+- project_id
+- project_name
+- client_name
+- site_location
+- openings_count
+- total_sqft
+- total_rope_lines
+- total_rope_meters
+- total_channel_feet
+- total_channel_pcs
+- total_fasteners
+- total_stiffner_meters
+- labour_cost
+- shipping_cost
+- misc_cost
+- total_cost
+- cost_per_sqft
+- selling_price
+- recommended_selling_price
+- total_profit
+- profit_per_sqft
+- stock_sync_status
+- stock_sync_message
+- notes
+
+Do not include connector_cost column.
+
+UPDATED WEEKLY SETTLEMENT RULES
+Create separate rows only for:
+1. Labour row
+2. Shipping row
+3. Misc row
+
+Do NOT create connector row.
+
+WeeklySettlement expense rows:
+1. Labour
+- expense_type: Labour
+- expense_category: Working Cost
+- amount: labour_cost
+
+2. Shipping
+- expense_type: Shipping
+- expense_category: Transport
+- amount: shipping_cost
+
+3. Misc
+- expense_type: Misc
+- expense_category: Other Expense
+- amount: misc_cost
+
+Save only rows where amount > 0.
+
+UPDATED PROJECT TOTALS PAYLOAD
+Do not send connector_cost in the totals payload to Google Sheet unless it is still required internally by existing UI calculations.
+If existing UI still has connector cost input and uses it in total cost, preserve the existing UI behavior only if needed, but exclude connector cost from Google Sheet records and settlement logic.
+
+FINAL RULE
+For all Google Sheet outputs, settlement reports, inventory records, and stock deduction:
+- ignore connector cost completely
+- use Misc Cost as the bucket for silicon, heavy fasteners, and similar extras
