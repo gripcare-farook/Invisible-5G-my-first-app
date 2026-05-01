@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ExternalLink } from "lucide-react";
 import { Settings, loadSettings, saveSettings } from "@/lib/storage";
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,7 @@ export default function SettingsPage() {
     <div className="px-4 py-4 space-y-4">
       <div className="bg-[#1e3a8a] text-white rounded-2xl px-4 py-4">
         <h1 className="text-lg font-bold">Settings</h1>
-        <p className="text-blue-200 text-xs">Default rates for new projects</p>
+        <p className="text-blue-200 text-xs">Default rates and integrations</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
@@ -81,6 +82,51 @@ export default function SettingsPage() {
       <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
         <h2 className="font-semibold text-sm text-[#1e3a8a]">Profit Target</h2>
         {numField("targetProfitPerSqft", "Target Profit / Sqft (₹)")}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-sm text-[#1e3a8a]">Google Sheets Sync</h2>
+          <a
+            href="https://script.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#1e3a8a] flex items-center gap-1 hover:underline"
+          >
+            Apps Script <ExternalLink size={11} />
+          </a>
+        </div>
+
+        <div>
+          <Label>Apps Script Web App URL</Label>
+          <Input
+            type="url"
+            value={form.appsScriptUrl}
+            onChange={(e) => update("appsScriptUrl", e.target.value)}
+            placeholder="https://script.google.com/macros/s/..."
+          />
+        </div>
+
+        <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800 space-y-1.5 leading-relaxed">
+          <p className="font-semibold">Setup instructions:</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Open your Google Sheet</li>
+            <li>Go to <strong>Extensions &rarr; Apps Script</strong></li>
+            <li>Paste the Apps Script code from <code className="bg-blue-100 px-1 rounded">google-apps-script/Code.gs</code></li>
+            <li>Click <strong>Deploy &rarr; New Deployment &rarr; Web app</strong></li>
+            <li>Set Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong></li>
+            <li>Copy the web app URL and paste it above</li>
+          </ol>
+          <p className="font-semibold mt-2">Required sheet tabs in your Google Sheet:</p>
+          <p>Projects &bull; OpeningDetails &bull; WeeklySettlement &bull; Stock</p>
+          <p className="text-blue-600">The script will auto-create headers if sheets are empty.</p>
+        </div>
+
+        <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
+          <p className="font-semibold">Stock sheet format:</p>
+          <p className="mt-1">Column A: item_code &bull; Column B: item_name &bull; Column C: unit &bull; Column D: quantity</p>
+          <p className="mt-1">Item codes: <code className="bg-amber-100 px-1 rounded">SSWIRE_2MM</code> &bull; <code className="bg-amber-100 px-1 rounded">CHANNEL_STD</code> &bull; <code className="bg-amber-100 px-1 rounded">FASTENER_STD</code> &bull; <code className="bg-amber-100 px-1 rounded">STIFFNER_STD</code></p>
+        </div>
       </div>
 
       <button

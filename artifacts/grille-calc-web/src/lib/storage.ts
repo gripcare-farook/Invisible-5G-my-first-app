@@ -13,6 +13,7 @@ export interface Settings {
   stiffnerCostPerMeter: number;
   costPerKm: number;
   targetProfitPerSqft: number;
+  appsScriptUrl: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stiffnerCostPerMeter: 80,
   costPerKm: 25,
   targetProfitPerSqft: 100,
+  appsScriptUrl: "",
 };
 
 export interface SavedProject {

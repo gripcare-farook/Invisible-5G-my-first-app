@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Share2, Save, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Plus, Share2, Save, ChevronDown, ChevronUp, Trash2, RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import {
   Opening, SharedInputs, ProjectTotals, ModelType, GapInches,
   ChannelInputMode, StiffnerCostMode, ShippingMode,
@@ -9,7 +9,10 @@ import {
   Settings, loadSettings, saveProject, newId,
 } from "@/lib/storage";
 import { shareViaWhatsApp } from "@/lib/share";
+import { syncToGoogleSheets } from "@/lib/sheets";
 import { LoadedProject } from "@/App";
+
+type SyncState = "idle" | "syncing" | "sent" | "error";
 
 interface OpeningForm {
   id: string;
@@ -163,7 +166,10 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
     sellingPricePerSqft: "",
     stiffnerCostMode: "perPiece",
   });
+  const [notes, setNotes] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
+  const [syncState, setSyncState] = useState<SyncState>("idle");
+  const [syncMsg, setSyncMsg] = useState("");
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -237,6 +243,32 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
   function handleShare() {
     if (!totals) return;
     shareViaWhatsApp(openingData, sharedInputs, totals);
+  }
+
+  async function handleSync() {
+    if (!totals || syncState === "syncing") return;
+    const url = settings.appsScriptUrl?.trim();
+    if (!url) {
+      setSyncState("error");
+      setSyncMsg("Apps Script URL not set. Go to Settings and add it.");
+      setTimeout(() => setSyncState("idle"), 4000);
+      return;
+    }
+    setSyncState("syncing");
+    setSyncMsg("Sending to Google Sheets...");
+    const projectId = newId();
+    const projectName = shared.projectName.trim() || shared.clientName.trim() || `Project ${new Date().toLocaleDateString("en-IN")}`;
+    const result = await syncToGoogleSheets(url, projectId, projectName, openingData, sharedInputs, totals, notes);
+    if (result.sent) {
+      setSyncState("sent");
+      setSyncMsg(result.message);
+      saveProject({ id: projectId, name: projectName, createdAt: Date.now(), updatedAt: Date.now(), openings: openingData, shared: sharedInputs });
+      setTimeout(() => setSyncState("idle"), 5000);
+    } else {
+      setSyncState("error");
+      setSyncMsg(result.message);
+      setTimeout(() => setSyncState("idle"), 5000);
+    }
   }
 
   return (
@@ -517,25 +549,61 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
         </div>
       )}
 
-      <div className="flex gap-3 pb-4">
+      <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
+        <h2 className="font-semibold text-sm text-[#1e3a8a]">Notes</h2>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Any site notes, special requirements, etc."
+          rows={3}
+          className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40 resize-none"
+        />
+      </div>
+
+      {syncState !== "idle" && (
+        <div className={`flex items-start gap-3 rounded-xl px-4 py-3 text-sm ${
+          syncState === "syncing" ? "bg-blue-50 text-blue-800 border border-blue-200" :
+          syncState === "sent" ? "bg-green-50 text-green-800 border border-green-200" :
+          "bg-red-50 text-red-800 border border-red-200"
+        }`}>
+          {syncState === "syncing" && <RefreshCw size={16} className="animate-spin mt-0.5 shrink-0" />}
+          {syncState === "sent" && <CheckCircle size={16} className="mt-0.5 shrink-0" />}
+          {syncState === "error" && <XCircle size={16} className="mt-0.5 shrink-0" />}
+          <span>{syncMsg}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={handleSave}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#1e3a8a] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#1e3a8a]/90 transition-colors"
+          className="flex items-center justify-center gap-2 bg-[#1e3a8a] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#1e3a8a]/90 transition-colors"
         >
           <Save size={16} />
-          {saveMsg || "Save Project"}
+          {saveMsg || "Save"}
         </button>
         <button
           type="button"
           onClick={handleShare}
           disabled={!totals}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#f97316] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#f97316]/90 disabled:opacity-40 transition-colors"
+          className="flex items-center justify-center gap-2 bg-[#f97316] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#f97316]/90 disabled:opacity-40 transition-colors"
         >
           <Share2 size={16} />
           WhatsApp
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={handleSync}
+        disabled={!totals || syncState === "syncing"}
+        className="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-semibold rounded-xl py-3.5 text-sm hover:bg-green-700 disabled:opacity-40 transition-colors mb-4"
+      >
+        {syncState === "syncing"
+          ? <><RefreshCw size={16} className="animate-spin" /> Syncing...</>
+          : <><RefreshCw size={16} /> Save &amp; Sync to Google Sheets</>
+        }
+      </button>
     </div>
   );
 }
