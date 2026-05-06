@@ -4,9 +4,12 @@ export function buildSummaryText(
   openings: Opening[],
   shared: SharedInputs,
   totals: ProjectTotals,
+  projectName = "",
+  notes = "",
 ): string {
   const lines: string[] = [];
   lines.push("*5G INVISIBLE GRILLE - QUOTATION*");
+  if (projectName) lines.push(`Project: ${projectName}`);
   if (shared.clientName) lines.push(`Client: ${shared.clientName}`);
   if (shared.siteLocation) lines.push(`Site: ${shared.siteLocation}`);
   lines.push("");
@@ -56,6 +59,10 @@ export function buildSummaryText(
   lines.push(`Recommended:    ${fmtINR(totals.recommendedSellingPrice)}`);
   lines.push(`Profit / sqft:  ${fmtINR(totals.profitPerSqft)}`);
   lines.push(`*Total Profit:  ${fmtINR(totals.totalProfit)}*`);
+  if (notes.trim()) {
+    lines.push("");
+    lines.push(`*Notes:* ${notes.trim()}`);
+  }
   return lines.join("\n");
 }
 
@@ -63,7 +70,9 @@ export function shareViaWhatsApp(
   openings: Opening[],
   shared: SharedInputs,
   totals: ProjectTotals,
+  projectName = "",
+  notes = "",
 ): void {
-  const text = buildSummaryText(openings, shared, totals);
+  const text = buildSummaryText(openings, shared, totals, projectName, notes);
   window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
 }

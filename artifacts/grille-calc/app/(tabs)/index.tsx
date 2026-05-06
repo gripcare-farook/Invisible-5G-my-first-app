@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -202,6 +203,8 @@ export default function CalculatorScreen() {
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -225,6 +228,8 @@ export default function CalculatorScreen() {
               : [buildEmptyOpening()],
           );
           setShared(sharedToForm(p.shared));
+          setProjectName(p.name);
+          setNotes(p.notes ?? "");
           setEditingId(p.id);
         }
         router.setParams({ projectId: "" });
@@ -324,6 +329,8 @@ export default function CalculatorScreen() {
           const s = await loadSettings();
           setShared(buildSharedFromSettings(s));
           setOpenings([buildEmptyOpening()]);
+          setProjectName("");
+          setNotes("");
           setEditingId(null);
         },
       },
@@ -340,6 +347,7 @@ export default function CalculatorScreen() {
       return;
     }
     const name =
+      projectName.trim() ||
       shared.clientName.trim() ||
       `${openings.length} opening${openings.length === 1 ? "" : "s"} · ${fmtNum(totals.totalSqft)} sqft`;
     const id = editingId ?? newId();
@@ -347,6 +355,7 @@ export default function CalculatorScreen() {
     const project: SavedProject = {
       id,
       name,
+      notes: notes.trim() || undefined,
       createdAt: now,
       updatedAt: now,
       openings: openingInputs,
@@ -369,7 +378,7 @@ export default function CalculatorScreen() {
       );
       return;
     }
-    await shareSummary(openingInputs, sharedInputs, totals);
+    await shareSummary(openingInputs, sharedInputs, totals, projectName.trim(), notes.trim());
   };
 
   if (!settingsLoaded) return null;
@@ -408,10 +417,17 @@ export default function CalculatorScreen() {
         {/* CLIENT */}
         <Section title="Project" subtitle="Client and quick presets">
           <LabeledInput
-            label="Client / Project Name (optional)"
+            label="Project Name"
+            value={projectName}
+            onChangeText={setProjectName}
+            placeholder="e.g. Smith Apartment - Living Room"
+            keyboardType="default"
+          />
+          <LabeledInput
+            label="Client / Contact Name"
             value={shared.clientName}
             onChangeText={(v) => updateShared("clientName", v)}
-            placeholder="e.g. Mr. Kumar - Sholinganallur"
+            placeholder="e.g. Mr. Kumar"
             keyboardType="default"
           />
           <View style={styles.presetRow}>
@@ -709,6 +725,28 @@ export default function CalculatorScreen() {
             </Text>
           </View>
         </Section>
+
+        {/* NOTES */}
+        <Section title="Notes" subtitle="Site details, special requirements">
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Any site notes, special requirements, measurements, etc."
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            style={[
+              styles.notesInput,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                color: colors.foreground,
+                fontFamily: "Inter_400Regular",
+              },
+            ]}
+          />
+        </Section>
       </KeyboardAwareScrollView>
 
       {/* Action Bar */}
@@ -912,6 +950,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     marginTop: 8,
+  },
+  notesInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    minHeight: 100,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
   statusText: {

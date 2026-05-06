@@ -11,9 +11,12 @@ export function buildSummaryText(
   openings: Opening[],
   shared: SharedInputs,
   totals: ProjectTotals,
+  projectName = "",
+  notes = "",
 ): string {
   const lines: string[] = [];
   lines.push("*5G INVISIBLE GRILLE - QUOTATION*");
+  if (projectName) lines.push(`Project: ${projectName}`);
   if (shared.clientName) lines.push(`Client: ${shared.clientName}`);
   if (shared.siteLocation) lines.push(`Site: ${shared.siteLocation}`);
   lines.push("");
@@ -79,6 +82,10 @@ export function buildSummaryText(
   lines.push(`Recommended:    ${fmtINR(totals.recommendedSellingPrice)}`);
   lines.push(`Profit / sqft:  ${fmtINR(totals.profitPerSqft)}`);
   lines.push(`*Total Profit:  ${fmtINR(totals.totalProfit)}*`);
+  if (notes.trim()) {
+    lines.push("");
+    lines.push(`*Notes:* ${notes.trim()}`);
+  }
   return lines.join("\n");
 }
 
@@ -86,8 +93,10 @@ export async function shareSummary(
   openings: Opening[],
   shared: SharedInputs,
   totals: ProjectTotals,
+  projectName = "",
+  notes = "",
 ): Promise<void> {
-  const message = buildSummaryText(openings, shared, totals);
+  const message = buildSummaryText(openings, shared, totals, projectName, notes);
   try {
     await Share.share({ message });
   } catch {

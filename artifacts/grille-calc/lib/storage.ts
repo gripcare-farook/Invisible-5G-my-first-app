@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
 export interface SavedProject {
   id: string;
   name: string;
+  notes?: string;
   createdAt: number;
   updatedAt: number;
   openings: Opening[];

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Share2, Save, ChevronDown, ChevronUp, Trash2, RefreshCw, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Share2, Save, ChevronDown, ChevronUp, Trash2, RefreshCw, CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import {
   Opening, SharedInputs, ProjectTotals, ModelType, GapInches,
   ChannelInputMode, StiffnerCostMode, ShippingMode,
@@ -240,9 +240,22 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
     setTimeout(() => setSaveMsg(""), 2000);
   }
 
+  function handleReset() {
+    if (!window.confirm("Start a new project? Unsaved changes will be lost.")) return;
+    setOpenings([emptyOpening()]);
+    setShared({
+      projectName: "", clientName: "", siteLocation: "",
+      shippingMode: "manual", shippingCostManual: "", distanceKm: "",
+      miscCost: "", connectorCost: "", sellingPricePerSqft: "", stiffnerCostMode: "perPiece",
+    });
+    setNotes("");
+    setSaveMsg("");
+    setSyncState("idle");
+  }
+
   function handleShare() {
     if (!totals) return;
-    shareViaWhatsApp(openingData, sharedInputs, totals);
+    shareViaWhatsApp(openingData, sharedInputs, totals, shared.projectName, notes);
   }
 
   async function handleSync() {
@@ -273,9 +286,20 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
 
   return (
     <div className="px-4 py-4 space-y-4">
-      <div className="bg-[#1e3a8a] text-white rounded-2xl px-4 py-4">
-        <h1 className="text-lg font-bold">5G Invisible Grille</h1>
-        <p className="text-blue-200 text-xs">Smart Calculator</p>
+      <div className="bg-[#1e3a8a] text-white rounded-2xl px-4 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold">5G Invisible Grille</h1>
+          <p className="text-blue-200 text-xs">Smart Calculator</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
+          title="New Project"
+        >
+          <RotateCcw size={13} />
+          New
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
