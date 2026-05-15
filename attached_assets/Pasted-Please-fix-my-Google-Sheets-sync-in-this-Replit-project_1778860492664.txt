@@ -1,0 +1,46 @@
+Please fix my Google Sheets sync in this Replit project.
+
+Context:
+- This project is a monorepo.
+- Web app path: artifacts/grille-calc-web/
+- Google Sheets sync frontend file: artifacts/grille-calc-web/src/lib/sheets.ts
+- Existing Apps Script approach is failing.
+- Browser direct fetch to Google Apps Script is not working reliably because of CORS / preflight issues.
+- The current frontend uses no-cors fetch, so the response is opaque and sheet updates are not happening.
+- I want a proper Replit-side fix, not another browser-to-Apps-Script workaround.
+
+What I want you to do:
+1. Remove the direct browser -> Google Apps Script sync approach from the web app.
+2. Create a backend proxy/API endpoint inside this Replit project that receives the calculator payload from the frontend.
+3. From the backend, send the data server-side to Google Sheets.
+4. Prefer a reliable server-side solution:
+   - either call Google Apps Script from the backend, or
+   - use Google Sheets API/service account if easier in this repo.
+5. Update the frontend so `src/lib/sheets.ts` sends the payload to the new Replit backend endpoint instead of calling Apps Script directly.
+6. Return a real JSON success/error response to the frontend.
+7. Preserve the current payload structure and business logic:
+   - action: "saveFullProject"
+   - notes field
+   - openings array
+   - connector cost should stay excluded from Google Sheets outputs
+8. Match the existing intended Google Sheets behavior:
+   - save summary to Projects
+   - save each opening to OpeningDetails
+   - save labour/shipping/misc to WeeklySettlement
+   - deduct stock from Stock
+9. Keep INR/business logic unchanged.
+10. Add clear error logging so failures are visible.
+
+Known details:
+- Sheet ID: 1DjsyPAZDp-pjojnlCBPb3ECaF3LrGEDKTJEs2lNHAiU
+- Existing web app currently builds payload in artifacts/grille-calc-web/src/lib/sheets.ts
+- There is an old Apps Script file at artifacts/grille-calc-web/google-apps-script/Code.gs, but direct browser usage is failing.
+- Current issue: no data reaches Google Sheet even after deployment and testing.
+
+What I need in the output:
+- exact files changed
+- exact code changes
+- any new backend route created
+- any env vars needed
+- step-by-step instructions to test
+- do not give generic advice; directly edit the codebase structure used in this project

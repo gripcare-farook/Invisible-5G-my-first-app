@@ -25,8 +25,16 @@ function doGet() {
 
 function doPost(e) {
   try {
-    var data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var raw = "{}";
+
+    if (e && e.parameter && e.parameter.data) {
+      raw = e.parameter.data;
+    } else if (e && e.postData && e.postData.contents) {
+      raw = e.postData.contents;
+    }
+
+    var data = JSON.parse(raw);
+   var ss = SpreadsheetApp.openById("1DjsyPAZDp-pjojnlCBPb3ECaF3LrGEDKTJEs2lNHAiU");
 
     if (data.action !== "saveFullProject") {
       return respond(false, "Unknown action: " + data.action);

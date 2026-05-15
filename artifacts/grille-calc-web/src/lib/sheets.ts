@@ -136,20 +136,29 @@ export async function syncToGoogleSheets(
   };
 
   try {
-    await fetch(appsScriptUrl, {
+    const resp = await fetch("/api/sheets/sync", {
       method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appsScriptUrl, payload }),
     });
+
+    const data = (await resp.json()) as { success?: boolean; message?: string };
+
+    if (!resp.ok || !data.success) {
+      return {
+        sent: false,
+        message: data.message ?? `Server error (HTTP ${resp.status}).`,
+      };
+    }
+
     return {
       sent: true,
-      message: "Data sent to Google Sheets. Please verify in your sheet.",
+      message: data.message ?? "Synced to Google Sheets successfully.",
     };
   } catch (err) {
     return {
       sent: false,
-      message: err instanceof Error ? err.message : "Network error — could not reach Apps Script.",
+      message: err instanceof Error ? err.message : "Network error — could not reach sync server.",
     };
   }
 }
