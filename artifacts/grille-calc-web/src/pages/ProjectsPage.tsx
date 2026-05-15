@@ -60,6 +60,9 @@ export default function ProjectsPage({ onLoad }: Props) {
                       <p className="text-xs text-muted-foreground mt-0.5">{p.shared.clientName}</p>
                     )}
                     <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
+                    {p.notes && (
+                      <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1 opacity-70">"{p.notes}"</p>
+                    )}
                   </div>
                   <button
                     type="button"

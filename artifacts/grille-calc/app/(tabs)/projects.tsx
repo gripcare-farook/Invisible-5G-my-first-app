@@ -52,6 +52,7 @@ export default function ProjectsScreen() {
     const copy: SavedProject = {
       id: newId(),
       name: `${p.name} (copy)`,
+      notes: p.notes,
       createdAt: now,
       updatedAt: now,
       openings: p.openings.map((o) => ({ ...o, id: newId() })),
@@ -77,7 +78,7 @@ export default function ProjectsScreen() {
 
   const onShare = async (p: SavedProject) => {
     const totals = calculateProject(p.openings, p.shared);
-    await shareSummary(p.openings, p.shared, totals);
+    await shareSummary(p.openings, p.shared, totals, p.name, p.notes ?? "");
   };
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -172,6 +173,14 @@ export default function ProjectsScreen() {
                       ? ` • ${item.shared.siteLocation}`
                       : ""}
                   </Text>
+                  {item.notes ? (
+                    <Text
+                      style={[styles.cardNotes, { color: colors.mutedForeground }]}
+                      numberOfLines={1}
+                    >
+                      "{item.notes}"
+                    </Text>
+                  ) : null}
                 </View>
                 <View
                   style={[
@@ -298,6 +307,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 12,
     marginTop: 3,
+  },
+  cardNotes: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 4,
+    fontStyle: "italic",
+    opacity: 0.7,
   },
   profitBadge: {
     paddingHorizontal: 10,

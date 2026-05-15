@@ -11,6 +11,7 @@ type Tab = "calculator" | "projects" | "settings";
 export interface LoadedProject {
   id: string;
   name: string;
+  notes?: string;
   openings: Opening[];
   shared: SharedInputs;
 }
@@ -20,7 +21,7 @@ export default function App() {
   const [loadProject, setLoadProject] = useState<LoadedProject | null>(null);
 
   function handleLoadProject(p: SavedProject) {
-    setLoadProject({ id: p.id, name: p.name, openings: p.openings, shared: p.shared });
+    setLoadProject({ id: p.id, name: p.name, notes: p.notes, openings: p.openings, shared: p.shared });
     setTab("calculator");
   }
 
@@ -31,12 +32,14 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col max-w-xl mx-auto bg-background">
       <div className="flex-1 overflow-y-auto pb-20">
-        {tab === "calculator" && (
+        {/* Keep Calculator always mounted to preserve form state across tab switches */}
+        <div className={tab !== "calculator" ? "hidden" : ""}>
           <CalculatorPage
+            isActive={tab === "calculator"}
             loadProject={loadProject}
             onProjectLoaded={handleProjectLoaded}
           />
-        )}
+        </div>
         {tab === "projects" && (
           <ProjectsPage onLoad={handleLoadProject} />
         )}

@@ -147,11 +147,12 @@ function StatGrid({ items }: { items: { label: string; value: string; highlight?
 }
 
 interface Props {
+  isActive: boolean;
   loadProject: LoadedProject | null;
   onProjectLoaded: () => void;
 }
 
-export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) {
+export default function CalculatorPage({ isActive, loadProject, onProjectLoaded }: Props) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [openings, setOpenings] = useState<OpeningForm[]>([emptyOpening()]);
   const [shared, setShared] = useState<SharedForm>({
@@ -167,13 +168,14 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
     stiffnerCostMode: "perPiece",
   });
   const [notes, setNotes] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState("");
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMsg, setSyncMsg] = useState("");
 
   useEffect(() => {
-    setSettings(loadSettings());
-  }, []);
+    if (isActive) setSettings(loadSettings());
+  }, [isActive]);
 
   useEffect(() => {
     if (!loadProject) return;
@@ -190,6 +192,8 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
       sellingPricePerSqft: loadProject.shared.sellingPricePerSqft ? String(loadProject.shared.sellingPricePerSqft) : "",
       stiffnerCostMode: loadProject.shared.stiffnerCostMode,
     }));
+    setNotes(loadProject.notes ?? "");
+    setEditingId(loadProject.id);
     setOpenings(
       loadProject.openings.map((o) => ({
         id: o.id,
@@ -228,15 +232,18 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
   function handleSave() {
     const name = shared.projectName.trim() || shared.clientName.trim() || `Project ${new Date().toLocaleDateString("en-IN")}`;
     const now = Date.now();
+    const id = editingId ?? newId();
     saveProject({
-      id: newId(),
+      id,
       name,
+      notes: notes.trim() || undefined,
       createdAt: now,
       updatedAt: now,
       openings: openingData,
       shared: sharedInputs,
     });
-    setSaveMsg("Saved!");
+    setEditingId(id);
+    setSaveMsg(editingId ? "Updated!" : "Saved!");
     setTimeout(() => setSaveMsg(""), 2000);
   }
 
@@ -249,6 +256,7 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
       miscCost: "", connectorCost: "", sellingPricePerSqft: "", stiffnerCostMode: "perPiece",
     });
     setNotes("");
+    setEditingId(null);
     setSaveMsg("");
     setSyncState("idle");
   }
@@ -269,13 +277,14 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
     }
     setSyncState("syncing");
     setSyncMsg("Sending to Google Sheets...");
-    const projectId = newId();
+    const projectId = editingId ?? newId();
     const projectName = shared.projectName.trim() || shared.clientName.trim() || `Project ${new Date().toLocaleDateString("en-IN")}`;
     const result = await syncToGoogleSheets(url, projectId, projectName, openingData, sharedInputs, totals, notes);
     if (result.sent) {
       setSyncState("sent");
       setSyncMsg(result.message);
-      saveProject({ id: projectId, name: projectName, createdAt: Date.now(), updatedAt: Date.now(), openings: openingData, shared: sharedInputs });
+      saveProject({ id: projectId, name: projectName, notes: notes.trim() || undefined, createdAt: Date.now(), updatedAt: Date.now(), openings: openingData, shared: sharedInputs });
+      setEditingId(projectId);
       setTimeout(() => setSyncState("idle"), 5000);
     } else {
       setSyncState("error");
@@ -604,7 +613,7 @@ export default function CalculatorPage({ loadProject, onProjectLoaded }: Props) 
           className="flex items-center justify-center gap-2 bg-[#1e3a8a] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#1e3a8a]/90 transition-colors"
         >
           <Save size={16} />
-          {saveMsg || "Save"}
+          {saveMsg || (editingId ? "Update" : "Save")}
         </button>
         <button
           type="button"
