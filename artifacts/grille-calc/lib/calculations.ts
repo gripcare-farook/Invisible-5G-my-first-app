@@ -56,6 +56,7 @@ export interface OpeningResults {
   channelBalanceFeet: number;
   channelRatePerFoot: number;
   fastenerQty: number;
+  stiffnerPiecesPerLine: number;
   stiffnerPieces: number;
   stiffnerLineCount: number;
   totalStiffnerFeet: number;
@@ -156,8 +157,10 @@ export function calculateOpening(
   const fastenerQty = totalChannelFeet;
 
   const stiffnerDimFt = o.modelType === "vertical" ? width : height;
-  const stiffnerPieces = gap > 0 ? Math.round((stiffnerDimFt * 12) / gap) : 0;
-  const totalStiffnerFeet = stiffnerDimFt;
+  const stiffnerPiecesPerLine = gap > 0 ? Math.round((stiffnerDimFt * 12) / gap) : 0;
+  const stiffnerLineCount = o.stiffnerLineCount != null ? num(o.stiffnerLineCount) : 1;
+  const stiffnerPieces = stiffnerPiecesPerLine * stiffnerLineCount;
+  const totalStiffnerFeet = stiffnerDimFt * stiffnerLineCount;
   const totalStiffnerMeters = totalStiffnerFeet * FT_TO_M;
 
   const wireCost = totalRopeMeters * num(s.wireCostPerMeter);
@@ -186,8 +189,9 @@ export function calculateOpening(
     channelBalanceFeet: channelBalanceFeet * qty,
     channelRatePerFoot,
     fastenerQty: fastenerQty * qty,
+    stiffnerPiecesPerLine,
     stiffnerPieces: stiffnerPieces * qty,
-    stiffnerLineCount: stiffnerPieces * qty,
+    stiffnerLineCount: stiffnerLineCount * qty,
     totalStiffnerFeet: totalStiffnerFeet * qty,
     totalStiffnerMeters: totalStiffnerMeters * qty,
     wireCost: wireCost * qty,

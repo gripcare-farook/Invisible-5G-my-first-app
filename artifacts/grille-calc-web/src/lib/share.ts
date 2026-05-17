@@ -33,7 +33,7 @@ export function buildSummaryText(
     }
     lines.push(`   Fasteners: ${fmtNum(r.fastenerQty, 0)} pcs`);
     if (r.stiffnerPieces > 0) {
-      lines.push(`   Stiffner: ${r.stiffnerPieces} pcs @ ${fmtINR(r.stiffnerCost / r.stiffnerPieces)}/pc = ${fmtINR(r.stiffnerCost)}`);
+      lines.push(`   Stiffner: ${r.stiffnerPiecesPerLine} pcs/line × ${r.stiffnerLineCount} lines = ${r.stiffnerPieces} pcs = ${fmtINR(r.stiffnerCost)}`);
     }
     lines.push(`   Subtotal: ${fmtINR(r.subtotal)}`);
     lines.push("");

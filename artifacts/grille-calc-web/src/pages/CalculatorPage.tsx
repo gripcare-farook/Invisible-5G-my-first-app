@@ -22,6 +22,7 @@ interface OpeningForm {
   quantity: string;
   modelType: ModelType;
   gapInches: GapInches;
+  stiffnerLineCount: string;
   channelInputMode: ChannelInputMode;
   channelOverride: string;
   expanded: boolean;
@@ -36,6 +37,7 @@ function emptyOpening(id?: string): OpeningForm {
     quantity: "1",
     modelType: "vertical",
     gapInches: 2,
+    stiffnerLineCount: "1",
     channelInputMode: "pcs",
     channelOverride: "",
     expanded: true,
@@ -56,6 +58,7 @@ function formToOpening(f: OpeningForm): Opening {
     quantity: Math.max(1, toNum(f.quantity) || 1),
     modelType: f.modelType,
     gapInches: f.gapInches,
+    stiffnerLineCount: toNum(f.stiffnerLineCount),
     channelInputMode: f.channelInputMode,
     channelOverride: f.channelOverride ? toNum(f.channelOverride) : null,
   };
@@ -203,6 +206,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
         quantity: String(o.quantity || 1),
         modelType: o.modelType,
         gapInches: o.gapInches,
+        stiffnerLineCount: String(o.stiffnerLineCount ?? 1),
         channelInputMode: o.channelInputMode ?? "pcs",
         channelOverride: o.channelOverride ? String(o.channelOverride) : "",
         expanded: false,
@@ -399,6 +403,10 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
                   />
                 </div>
                 <div>
+                  <Label>Stiffner Lines</Label>
+                  <Input type="number" inputMode="numeric" min="0" value={o.stiffnerLineCount} onChange={(e) => updateOpening(idx, "stiffnerLineCount", e.target.value)} placeholder="1" />
+                </div>
+                <div>
                   <Label>Channel Unit</Label>
                   <ToggleGroup
                     options={[{ label: "Pcs", value: "pcs" }, { label: "Feet", value: "feet" }]}
@@ -441,9 +449,11 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
                         ? [{ label: "Balance", value: `${fmtNum(res.channelBalanceFeet)} ft` }]
                         : []),
                       { label: "Fasteners", value: `${fmtNum(res.fastenerQty, 0)} pcs` },
-                      ...(res.stiffnerPieces > 0
+                      ...(res.stiffnerLineCount > 0
                         ? [
-                            { label: "Stiffner Pcs", value: `${res.stiffnerPieces} pcs` },
+                            { label: "St./Line", value: `${res.stiffnerPiecesPerLine} pcs` },
+                            { label: "St. Lines", value: `${res.stiffnerLineCount}` },
+                            { label: "St. Total", value: `${res.stiffnerPieces} pcs` },
                             { label: "St. Cost", value: fmtINR(res.stiffnerCost) },
                           ]
                         : []),

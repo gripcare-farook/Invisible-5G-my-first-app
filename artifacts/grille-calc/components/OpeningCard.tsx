@@ -22,6 +22,7 @@ export interface OpeningFormState {
   quantity: string;
   modelType: ModelType;
   gapInches: GapInches;
+  stiffnerLineCount: string;
   channelInputMode: ChannelInputMode;
   channelOverride: string;
 }
@@ -171,6 +172,12 @@ export function OpeningCard({
           value={state.gapInches}
           onChange={(v) => update("gapInches", v)}
         />
+        <LabeledInput
+          label="Stiffner Lines"
+          value={state.stiffnerLineCount}
+          onChangeText={(v) => update("stiffnerLineCount", v)}
+          suffix="lines"
+        />
         <Segmented
           label="Channel Unit"
           options={[
@@ -229,12 +236,14 @@ export function OpeningCard({
               value={`${fmtNum(results.fastenerQty, 0)} pcs`}
             />
             <MiniStat
-              label="Stiffner Pcs"
-              value={`${results.stiffnerPieces} pcs`}
+              label="St./Line"
+              value={`${results.stiffnerPiecesPerLine} pcs`}
+              hint={`× ${results.stiffnerLineCount} lines`}
             />
             <MiniStat
-              label="St. Cost"
-              value={fmtINR(results.stiffnerCost)}
+              label="St. Total"
+              value={`${results.stiffnerPieces} pcs`}
+              hint={fmtINR(results.stiffnerCost)}
             />
           </View>
         ) : null}

@@ -1,0 +1,80 @@
+Update the existing 5G Invisible Grille Smart Calculator app only. Do not redesign, remove, rename, refactor, or break any current feature, UI, calculations, saved projects, Google Sheets sync, stock sync, WhatsApp sharing, or other business logic. Change only the stiffner lines input and related stiffner calculation logic described below.
+
+Requirement:
+I want the stiffner lines to be an input field again. It existed before, but now it is missing. I need it back.
+
+Behavior needed:
+1. Add a numeric input box called:
+   - Stiffner Lines
+2. Default value must be:
+   - 1
+3. It must be optional, so I can also enter:
+   - 0
+   - 2
+   - 3
+   - or any needed whole number
+4. Minimum allowed value:
+   - 0
+5. This stiffner lines input must directly affect the stiffner cost calculation
+
+Correct stiffner calculation rule:
+- Stiffner rate = Rs. 2 per stiffner piece
+- Use selected gap size in inches
+
+Model-based formula:
+A) Horizontal model:
+- base stiffner pieces per line = (height in inches / gap in inches)
+
+B) Vertical model:
+- base stiffner pieces per line = (width in inches / gap in inches)
+
+Then:
+- total stiffner pieces = base stiffner pieces per line × stiffner lines
+- stiffner cost = total stiffner pieces × stiffner rate
+
+If quantity / number of same openings exists, then:
+- final total stiffner pieces = total stiffner pieces × quantity
+- final total stiffner cost = stiffner cost × quantity
+
+Example:
+- width = 7.9 ft
+- height = 5 ft
+- model = Horizontal
+- gap = 2 inches
+- height = 5 ft = 60 inches
+- base stiffner pieces per line = 60 / 2 = 30
+- one stiffner line = 30 pieces
+- 30 × Rs. 2 = Rs. 60 for one line
+- if stiffner lines = 2, then total stiffner pieces = 30 × 2 = 60
+- total stiffner cost = 60 × Rs. 2 = Rs. 120
+
+So the stiffner lines input must multiply the result correctly.
+
+Required updates:
+1. Add back the stiffner lines numeric input box in each opening card
+2. Default stiffner lines = 1
+3. Allow zero and any whole number above zero
+4. Use stiffner lines in the calculation formula
+5. Show these clearly in the result if possible:
+   - stiffner pieces per line
+   - stiffner lines
+   - total stiffner pieces
+   - stiffner rate
+   - stiffner cost
+6. Update all related places:
+   - per opening result
+   - grand totals
+   - saved projects
+   - project reload/edit
+   - Google Sheets sync
+   - WhatsApp/export share
+7. Preserve current horizontal/vertical logic:
+   - Horizontal uses height-based formula
+   - Vertical uses width-based formula
+8. Do not change unrelated features
+
+Important:
+- First inspect the existing stiffner calculation code and only update the necessary logic
+- Do not hardcode the example values
+- Keep existing UI and layout as much as possible
+- After finishing, tell me exactly which files and formulas were changed
