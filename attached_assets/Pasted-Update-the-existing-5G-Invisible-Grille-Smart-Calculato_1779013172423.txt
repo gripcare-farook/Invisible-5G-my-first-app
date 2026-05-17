@@ -1,0 +1,81 @@
+Update the existing 5G Invisible Grille Smart Calculator app only. Do not redesign, remove, rename, refactor, or break any current feature, UI, Google Sheets sync, saved projects, stock sync, WhatsApp sharing, or unrelated calculations. Change only the stiffner calculation logic required below.
+
+Problem:
+The stiffner cost is being calculated incorrectly. It is showing a very low value like Rs. 20, but it should be based on the actual number of stiffner pieces needed.
+
+Correct business rule I want:
+- Stiffner rate = Rs. 2 per stiffner piece
+- Use the selected gap size in inches
+- For Horizontal model, stiffner count must be based on the opening height in inches
+- For Vertical model, stiffner count must be based on the opening width in inches
+
+Formula rules:
+1. Horizontal model:
+   - heightInches = heightFt × 12
+   - stiffnerPiecesPerOpening = heightInches / gapInches
+   - stiffnerCostPerOpening = stiffnerPiecesPerOpening × stiffnerRate
+
+2. Vertical model:
+   - widthInches = widthFt × 12
+   - stiffnerPiecesPerOpening = widthInches / gapInches
+   - stiffnerCostPerOpening = stiffnerPiecesPerOpening × stiffnerRate
+
+3. If quantity field exists:
+   - totalStiffnerPieces = stiffnerPiecesPerOpening × quantity
+   - totalStiffnerCost = stiffnerCostPerOpening × quantity
+
+Examples to verify:
+Example 1:
+- width = 7.9 ft
+- height = 5 ft
+- model = Horizontal
+- gap = 2 inches
+- quantity = 9
+- 5 ft = 60 inches
+- 60 / 2 = 30 stiffner pieces per opening
+- 30 × Rs. 2 = Rs. 60 stiffner cost per opening
+- 60 × 9 = Rs. 540 total stiffner cost
+
+Example 2:
+- width = 11 ft
+- height = 5 ft
+- model = Horizontal
+- gap = 2 inches
+- quantity = 1
+- 5 ft = 60 inches
+- 60 / 2 = 30 stiffner pieces
+- 30 × Rs. 2 = Rs. 60 stiffner cost
+
+Expected combined stiffner cost for above two examples = Rs. 600
+
+Example 3 for Vertical:
+- width = 5 ft
+- height = any value
+- model = Vertical
+- gap = 2 inches
+- quantity = 1
+- 5 ft = 60 inches
+- 60 / 2 = 30 stiffner pieces
+- 30 × Rs. 2 = Rs. 60 stiffner cost
+
+Required update:
+1. Fix the stiffner formula in code
+2. Do not hardcode the example values; fix the general formula
+3. Show stiffner details clearly in results:
+   - stiffner pieces count
+   - stiffner rate
+   - stiffner cost
+4. Update all related places:
+   - per opening result
+   - grand totals
+   - saved projects
+   - Google Sheets sync
+   - WhatsApp/export share
+5. Keep the default stiffner rate as Rs. 2 per piece unless manually changed in settings if that feature already exists
+6. Do not change rope, channel, fastener, labour, shipping, or other logic unless required for this exact stiffner fix
+7. Preserve existing UI and workflow as much as possible
+
+Important:
+- First inspect the current stiffner formula in the code and replace only the wrong logic
+- If there is already a stiffner lines field and stiffner meters field, update them consistently with the corrected piece-based stiffner cost logic
+- After finishing, tell me exactly which files and formulas were changed

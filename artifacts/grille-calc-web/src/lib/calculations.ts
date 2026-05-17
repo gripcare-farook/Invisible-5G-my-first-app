@@ -14,7 +14,7 @@ export interface Opening {
   quantity: number;
   modelType: ModelType;
   gapInches: GapInches;
-  stiffnerLineCount: number;
+  stiffnerLineCount?: number;
   channelInputMode: ChannelInputMode;
   channelOverride: number | null;
 }
@@ -53,6 +53,7 @@ export interface OpeningResults {
   channelBalanceFeet: number;
   channelRatePerFoot: number;
   fastenerQty: number;
+  stiffnerPieces: number;
   stiffnerLineCount: number;
   totalStiffnerFeet: number;
   totalStiffnerMeters: number;
@@ -150,9 +151,9 @@ export function calculateOpening(o: Opening, s: SharedInputs): OpeningResults {
   const totalChannelFeet = channelPieces * stdLen;
   const fastenerQty = totalChannelFeet;
 
-  const stiffnerLineLen = o.modelType === "vertical" ? width : height;
-  const stiffnerLineCount = num(o.stiffnerLineCount);
-  const totalStiffnerFeet = stiffnerLineCount * stiffnerLineLen;
+  const stiffnerDimFt = o.modelType === "vertical" ? width : height;
+  const stiffnerPieces = gap > 0 ? Math.round((stiffnerDimFt * 12) / gap) : 0;
+  const totalStiffnerFeet = stiffnerDimFt;
   const totalStiffnerMeters = totalStiffnerFeet * FT_TO_M;
 
   const wireCost = totalRopeMeters * num(s.wireCostPerMeter);
@@ -161,7 +162,7 @@ export function calculateOpening(o: Opening, s: SharedInputs): OpeningResults {
   const fastenerCost = fastenerQty * num(s.fastenerCostPerPiece);
   const stiffnerCost =
     s.stiffnerCostMode === "perPiece"
-      ? stiffnerLineCount * num(s.stiffnerCostPerPiece)
+      ? stiffnerPieces * num(s.stiffnerCostPerPiece)
       : totalStiffnerMeters * num(s.stiffnerCostPerMeter);
   const labourCost = sqft * num(s.labourCostPerSqft);
   const subtotal = wireCost + channelCost + fastenerCost + stiffnerCost + labourCost;
@@ -180,7 +181,8 @@ export function calculateOpening(o: Opening, s: SharedInputs): OpeningResults {
     channelBalanceFeet: channelBalanceFeet * qty,
     channelRatePerFoot,
     fastenerQty: fastenerQty * qty,
-    stiffnerLineCount: stiffnerLineCount * qty,
+    stiffnerPieces: stiffnerPieces * qty,
+    stiffnerLineCount: stiffnerPieces * qty,
     totalStiffnerFeet: totalStiffnerFeet * qty,
     totalStiffnerMeters: totalStiffnerMeters * qty,
     wireCost: wireCost * qty,

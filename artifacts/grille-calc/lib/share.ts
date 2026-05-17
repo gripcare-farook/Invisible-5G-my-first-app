@@ -49,9 +49,9 @@ export function buildSummaryText(
       lines.push(`   Balance: ${fmtNum(r.channelBalanceFeet)} ft`);
     }
     lines.push(`   Fasteners: ${fmtNum(r.fastenerQty, 0)} pcs`);
-    if (r.stiffnerLineCount > 0) {
+    if (r.stiffnerPieces > 0) {
       lines.push(
-        `   Stiffner ${r.stiffnerLineCount} lines = ${fmtNum(r.totalStiffnerMeters)} m`,
+        `   Stiffner: ${r.stiffnerPieces} pcs @ ${fmtINR(r.stiffnerCost / r.stiffnerPieces)}/pc = ${fmtINR(r.stiffnerCost)}`,
       );
     }
     lines.push(`   Subtotal: ${fmtINR(r.subtotal)}`);
@@ -65,9 +65,7 @@ export function buildSummaryText(
     `Channel:        ${totals.totalChannelPieces} pcs (${fmtNum(totals.totalChannelFeet, 0)} ft)`,
   );
   lines.push(`Fasteners:      ${fmtNum(totals.totalFasteners, 0)} pcs`);
-  lines.push(
-    `Stiffner:       ${totals.totalStiffnerLines} lines = ${fmtNum(totals.totalStiffnerMeters)} m`,
-  );
+  lines.push(`Stiffner:       ${totals.totalStiffnerLines} pcs`);
   lines.push("");
 
   lines.push("*COST BREAKDOWN*");
