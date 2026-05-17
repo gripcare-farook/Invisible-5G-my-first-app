@@ -173,7 +173,7 @@ export default function SettingsScreen() {
           <View style={styles.row}>
             <LabeledInput
               flex={1}
-              label="Channel / pc"
+              label="Channel / 10ft pc"
               value={form.channelCostPerPiece}
               onChangeText={(v) => update("channelCostPerPiece", v)}
               suffix="₹"

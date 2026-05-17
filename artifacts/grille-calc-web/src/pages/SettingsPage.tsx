@@ -67,7 +67,7 @@ export default function SettingsPage() {
       <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
         <h2 className="font-semibold text-sm text-[#1e3a8a]">Material Rates</h2>
         {numField("wireCostPerMeter", "Wire Cost / Meter (₹)")}
-        {numField("channelCostPerPiece", "Channel Cost / Piece (₹)")}
+        {numField("channelCostPerPiece", "Channel Cost / 10ft Piece (₹)")}
         {numField("fastenerCostPerPiece", "Fastener Cost / Piece (₹)")}
         {numField("stiffnerCostPerPiece", "Stiffner Cost / Piece (₹)")}
         {numField("stiffnerCostPerMeter", "Stiffner Cost / Meter (₹)")}

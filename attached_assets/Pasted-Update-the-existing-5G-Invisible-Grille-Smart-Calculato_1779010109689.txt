@@ -1,0 +1,57 @@
+Update the existing 5G Invisible Grille Smart Calculator app only. Do not redesign, remove, rename, refactor, or break any current feature, layout, Google Sheets sync, saved projects, WhatsApp share, stock logic, or existing calculations unless required for this exact update.
+
+I need to change the channel cost calculation logic.
+
+Current business rule I want:
+- One standard channel length = 10 feet
+- One full 10-feet channel price is entered by me as the channel price
+- Example: if 10 feet channel price = Rs. 1200
+- Then channel rate per foot = 1200 / 10 = Rs. 120 per foot
+- If required channel length is 7.9 feet, channel expense must be calculated as 7.9 × 120 = Rs. 948
+- So do not force full-piece price for 7.9 feet cost calculation
+- I want channel expense to be calculated by feet rate
+
+Required changes:
+1. Keep standard channel length = 10 feet
+2. Add or use a derived formula:
+   - channelRatePerFoot = channelPricePer10Ft / 10
+3. Calculate channel expense based on actual required feet:
+   - channelExpense = requiredChannelFeet × channelRatePerFoot
+4. Show channel details separately in the UI:
+   - required channel feet
+   - channel rate per foot
+   - channel expense
+5. Also continue to show how many standard 10-feet channel pieces are needed separately
+6. Do not mix these two values:
+   - channel pieces needed
+   - channel cost by feet rate
+7. Example display:
+   - Required Channel: 7.9 ft
+   - Standard Channel Pieces Needed: 1
+   - Channel Rate: Rs. 120/ft
+   - Channel Expense: Rs. 948
+8. If required channel length is more than 10 feet, still show both:
+   - total feet required
+   - equivalent standard pieces needed
+   - expense based on total feet rate
+9. Update all places where channel cost is shown:
+   - per opening result
+   - grand total
+   - saved project
+   - Google Sheets sync
+   - WhatsApp share/export text
+10. Preserve existing business logic for rope, fasteners, stiffner, labour, shipping, and stock sync
+
+Important:
+- Do not change unrelated features
+- Do not change existing UI unnecessarily
+- Keep the current standard channel size logic as 10 feet per piece
+- Keep existing pcs/feet input behavior unless it must be adjusted for this exact costing update
+- After finishing, tell me exactly which files were changed
+
+Also show one example in the final explanation:
+- channel price per 10 ft = Rs. 1200
+- required channel length = 7.9 ft
+- rate per foot = Rs. 120
+- channel expense = Rs. 948
+- standard pieces needed = 1

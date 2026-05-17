@@ -441,12 +441,12 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
                       { label: "Area", value: `${fmtNum(res.sqft)} sqft` },
                       { label: "Rope", value: `${fmtNum(res.totalRopeMeters)} m`, },
                       { label: "Rope Lines", value: `${res.ropeLineCount} lines` },
-                      { label: "Channel", value: `${res.channelPieces} pcs` },
-                      ...(res.channelInputMode === "feet" && res.channelEnteredFeet > 0
-                        ? [
-                            { label: "Used", value: `${fmtNum(res.channelUsedFeet)} ft` },
-                            { label: "Balance", value: `${fmtNum(res.channelBalanceFeet)} ft` },
-                          ]
+                      { label: "Channel Pcs", value: `${res.channelPieces} pcs` },
+                      { label: "Ch. Feet", value: `${fmtNum(res.channelUsedFeet)} ft` },
+                      { label: "Rate/ft", value: `${fmtINR(res.channelRatePerFoot)}/ft` },
+                      { label: "Ch. Cost", value: fmtINR(res.channelCost) },
+                      ...(res.channelInputMode === "feet" && res.channelBalanceFeet > 0
+                        ? [{ label: "Balance", value: `${fmtNum(res.channelBalanceFeet)} ft` }]
                         : []),
                       { label: "Fasteners", value: `${fmtNum(res.fastenerQty, 0)} pcs` },
                       ...(res.stiffnerLineCount > 0
@@ -525,7 +525,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
             {[
               { label: "Total Area", value: `${fmtNum(totals.totalSqft)} sqft` },
               { label: "Rope", value: `${fmtNum(totals.totalRopeMeters)} m` },
-              { label: "Channel", value: `${totals.totalChannelPieces} pcs` },
+              { label: "Channel", value: `${totals.totalChannelPieces} pcs / ${fmtNum(totals.totalChannelFeet, 0)} ft` },
               { label: "Fasteners", value: `${fmtNum(totals.totalFasteners, 0)} pcs` },
             ].map((r) => (
               <div key={r.label} className="flex justify-between">

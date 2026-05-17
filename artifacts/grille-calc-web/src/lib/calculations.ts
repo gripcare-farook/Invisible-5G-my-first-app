@@ -51,6 +51,7 @@ export interface OpeningResults {
   channelEnteredFeet: number;
   channelUsedFeet: number;
   channelBalanceFeet: number;
+  channelRatePerFoot: number;
   fastenerQty: number;
   stiffnerLineCount: number;
   totalStiffnerFeet: number;
@@ -155,7 +156,8 @@ export function calculateOpening(o: Opening, s: SharedInputs): OpeningResults {
   const totalStiffnerMeters = totalStiffnerFeet * FT_TO_M;
 
   const wireCost = totalRopeMeters * num(s.wireCostPerMeter);
-  const channelCost = channelPieces * num(s.channelCostPerPiece);
+  const channelRatePerFoot = num(s.channelCostPerPiece) / stdLen;
+  const channelCost = channelUsedFeet * channelRatePerFoot;
   const fastenerCost = fastenerQty * num(s.fastenerCostPerPiece);
   const stiffnerCost =
     s.stiffnerCostMode === "perPiece"
@@ -176,6 +178,7 @@ export function calculateOpening(o: Opening, s: SharedInputs): OpeningResults {
     channelEnteredFeet: channelEnteredFeet * qty,
     channelUsedFeet: channelUsedFeet * qty,
     channelBalanceFeet: channelBalanceFeet * qty,
+    channelRatePerFoot,
     fastenerQty: fastenerQty * qty,
     stiffnerLineCount: stiffnerLineCount * qty,
     totalStiffnerFeet: totalStiffnerFeet * qty,

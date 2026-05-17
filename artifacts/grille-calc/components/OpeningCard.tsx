@@ -10,6 +10,7 @@ import {
   GapInches,
   ModelType,
   OpeningResults,
+  fmtINR,
   fmtNum,
 } from "@/lib/calculations";
 
@@ -214,22 +215,21 @@ export function OpeningCard({
               hint={`${results.ropeLineCount} lines`}
             />
             <MiniStat
-              label="Channel"
+              label="Channel Pcs"
               value={`${results.channelPieces} pcs`}
-              hint={`${fmtNum(results.totalChannelFeet, 0)} ft total`}
+              hint={`${fmtNum(results.channelUsedFeet)} ft`}
+            />
+            <MiniStat
+              label="Ch. Cost"
+              value={fmtINR(results.channelCost)}
+              hint={`${fmtINR(results.channelRatePerFoot)}/ft`}
             />
             {results.channelInputMode === "feet" &&
-            results.channelEnteredFeet > 0 ? (
-              <>
-                <MiniStat
-                  label="Used"
-                  value={`${fmtNum(results.channelUsedFeet)} ft`}
-                />
-                <MiniStat
-                  label="Balance"
-                  value={`${fmtNum(results.channelBalanceFeet)} ft`}
-                />
-              </>
+            results.channelBalanceFeet > 0 ? (
+              <MiniStat
+                label="Balance"
+                value={`${fmtNum(results.channelBalanceFeet)} ft`}
+              />
             ) : null}
             <MiniStat
               label="Fasteners"

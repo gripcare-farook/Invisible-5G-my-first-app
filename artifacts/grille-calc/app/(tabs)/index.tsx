@@ -636,7 +636,7 @@ export default function CalculatorScreen() {
           />
           <StatRow
             label="Total Channels"
-            value={`${totals.totalChannelPieces} pcs`}
+            value={`${totals.totalChannelPieces} pcs / ${fmtNum(totals.totalChannelFeet, 0)} ft`}
           />
           <StatRow
             label="Total Fasteners"

@@ -27,10 +27,11 @@ export function buildSummaryText(
     }
     lines.push(`   ${o.modelType === "vertical" ? "Vertical" : "Horizontal"} | Gap ${o.gapInches}"`);
     lines.push(`   Rope ${r.ropeLineCount} lines = ${fmtNum(r.totalRopeMeters)} m`);
-    lines.push(`   Channel ${r.channelPieces} pcs (${fmtNum(r.totalChannelFeet, 0)} ft) | Fasteners ${fmtNum(r.fastenerQty, 0)}`);
-    if (r.channelInputMode === "feet" && r.channelEnteredFeet > 0) {
-      lines.push(`   Used ${fmtNum(r.channelUsedFeet)} ft | Balance ${fmtNum(r.channelBalanceFeet)} ft`);
+    lines.push(`   Channel ${r.channelPieces} pcs | ${fmtNum(r.channelUsedFeet)} ft @ ${fmtINR(r.channelRatePerFoot)}/ft = ${fmtINR(r.channelCost)}`);
+    if (r.channelInputMode === "feet" && r.channelBalanceFeet > 0) {
+      lines.push(`   Balance: ${fmtNum(r.channelBalanceFeet)} ft`);
     }
+    lines.push(`   Fasteners: ${fmtNum(r.fastenerQty, 0)} pcs`);
     if (r.stiffnerLineCount > 0) {
       lines.push(`   Stiffner ${r.stiffnerLineCount} lines = ${fmtNum(r.totalStiffnerMeters)} m`);
     }
