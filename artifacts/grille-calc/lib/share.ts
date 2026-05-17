@@ -24,11 +24,18 @@ export function buildSummaryText(
   openings.forEach((o, i) => {
     const r = totals.openings[i];
     if (!r) return;
+    const qty = Math.max(1, Math.round(o.quantity || 1));
     const label = o.label.trim() || `Opening ${i + 1}`;
-    lines.push(`*${i + 1}. ${label}*`);
-    lines.push(
-      `   Size: ${fmtNum(o.width)} x ${fmtNum(o.height)} ft = ${fmtNum(r.sqft)} sqft`,
-    );
+    lines.push(`*${i + 1}. ${label}${qty > 1 ? ` ×${qty}` : ""}*`);
+    if (qty > 1) {
+      lines.push(
+        `   ${fmtNum(o.width)} × ${fmtNum(o.height)} ft each | Qty: ${qty} = ${fmtNum(r.sqft)} sqft total`,
+      );
+    } else {
+      lines.push(
+        `   Size: ${fmtNum(o.width)} × ${fmtNum(o.height)} ft = ${fmtNum(r.sqft)} sqft`,
+      );
+    }
     lines.push(
       `   ${o.modelType === "vertical" ? "Vertical" : "Horizontal"} | Gap ${o.gapInches}"`,
     );

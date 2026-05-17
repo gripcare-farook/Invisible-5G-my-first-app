@@ -19,6 +19,7 @@ interface OpeningForm {
   label: string;
   width: string;
   height: string;
+  quantity: string;
   modelType: ModelType;
   gapInches: GapInches;
   stiffnerLineCount: string;
@@ -33,6 +34,7 @@ function emptyOpening(id?: string): OpeningForm {
     label: "",
     width: "",
     height: "",
+    quantity: "1",
     modelType: "vertical",
     gapInches: 2,
     stiffnerLineCount: "0",
@@ -53,6 +55,7 @@ function formToOpening(f: OpeningForm): Opening {
     label: f.label.trim(),
     width: toNum(f.width),
     height: toNum(f.height),
+    quantity: Math.max(1, toNum(f.quantity) || 1),
     modelType: f.modelType,
     gapInches: f.gapInches,
     stiffnerLineCount: toNum(f.stiffnerLineCount),
@@ -200,6 +203,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
         label: o.label,
         width: o.width ? String(o.width) : "",
         height: o.height ? String(o.height) : "",
+        quantity: String(o.quantity || 1),
         modelType: o.modelType,
         gapInches: o.gapInches,
         stiffnerLineCount: String(o.stiffnerLineCount || 0),
@@ -339,9 +343,16 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
             >
               <span className="font-semibold text-sm text-[#1e3a8a]">{openingLabel}</span>
               <div className="flex items-center gap-2">
-                {res && res.sqft > 0 && (
-                  <span className="text-xs text-muted-foreground">{fmtNum(res.sqft)} sqft</span>
-                )}
+                {res && res.sqft > 0 && (() => {
+                  const qty = toNum(o.quantity) || 1;
+                  return (
+                    <span className="text-xs text-muted-foreground">
+                      {qty > 1
+                        ? `${fmtNum(res.sqft / qty)} ×${qty} = ${fmtNum(res.sqft)} sqft`
+                        : `${fmtNum(res.sqft)} sqft`}
+                    </span>
+                  );
+                })()}
                 {openings.length > 1 && (
                   <button
                     type="button"
@@ -361,7 +372,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
                   <Label>Opening Label</Label>
                   <Input value={o.label} onChange={(e) => updateOpening(idx, "label", e.target.value)} placeholder={`Opening ${idx + 1}`} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label>Width (ft)</Label>
                     <Input type="number" inputMode="decimal" value={o.width} onChange={(e) => updateOpening(idx, "width", e.target.value)} placeholder="0" />
@@ -369,6 +380,10 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
                   <div>
                     <Label>Height (ft)</Label>
                     <Input type="number" inputMode="decimal" value={o.height} onChange={(e) => updateOpening(idx, "height", e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <Label>Qty</Label>
+                    <Input type="number" inputMode="numeric" min="1" value={o.quantity} onChange={(e) => updateOpening(idx, "quantity", e.target.value)} placeholder="1" />
                   </div>
                 </div>
                 <div>

@@ -11,6 +11,7 @@ export interface Opening {
   label: string;
   width: number;
   height: number;
+  quantity: number;
   modelType: ModelType;
   gapInches: GapInches;
   stiffnerLineCount: number;
@@ -163,12 +164,28 @@ export function calculateOpening(o: Opening, s: SharedInputs): OpeningResults {
   const labourCost = sqft * num(s.labourCostPerSqft);
   const subtotal = wireCost + channelCost + fastenerCost + stiffnerCost + labourCost;
 
+  const qty = Math.max(1, Math.round(num(o.quantity) || 1));
   return {
-    sqft, ropeLineCount, totalRopeFeet, totalRopeMeters,
-    channelPieces, totalChannelFeet, channelInputMode: inputMode,
-    channelEnteredFeet, channelUsedFeet, channelBalanceFeet,
-    fastenerQty, stiffnerLineCount, totalStiffnerFeet, totalStiffnerMeters,
-    wireCost, channelCost, fastenerCost, stiffnerCost, labourCost, subtotal,
+    sqft: sqft * qty,
+    ropeLineCount: ropeLineCount * qty,
+    totalRopeFeet: totalRopeFeet * qty,
+    totalRopeMeters: totalRopeMeters * qty,
+    channelPieces: channelPieces * qty,
+    totalChannelFeet: totalChannelFeet * qty,
+    channelInputMode: inputMode,
+    channelEnteredFeet: channelEnteredFeet * qty,
+    channelUsedFeet: channelUsedFeet * qty,
+    channelBalanceFeet: channelBalanceFeet * qty,
+    fastenerQty: fastenerQty * qty,
+    stiffnerLineCount: stiffnerLineCount * qty,
+    totalStiffnerFeet: totalStiffnerFeet * qty,
+    totalStiffnerMeters: totalStiffnerMeters * qty,
+    wireCost: wireCost * qty,
+    channelCost: channelCost * qty,
+    fastenerCost: fastenerCost * qty,
+    stiffnerCost: stiffnerCost * qty,
+    labourCost: labourCost * qty,
+    subtotal: subtotal * qty,
   };
 }
 

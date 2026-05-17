@@ -106,7 +106,7 @@ function saveToProjects(ss, data) {
 
 var OPENING_HEADERS = [
   "project_id", "saved_at", "opening_index", "opening_label",
-  "width_ft", "height_ft", "sqft", "model_type", "gap_inches",
+  "width_ft", "height_ft", "quantity", "sqft", "model_type", "gap_inches",
   "rope_lines", "rope_meters", "channel_pcs", "channel_feet",
   "fasteners", "stiffner_lines", "stiffner_meters",
   "wire_cost", "channel_cost", "fastener_cost", "stiffner_cost", "labour_cost", "subtotal"
@@ -125,6 +125,7 @@ function saveToOpeningDetails(ss, data) {
       o.label,
       o.widthFt,
       o.heightFt,
+      o.quantity || 1,
       o.sqft,
       o.modelType,
       o.gapInches,

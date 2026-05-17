@@ -40,6 +40,7 @@ interface OpeningPayload {
   label: string;
   widthFt: number;
   heightFt: number;
+  quantity: number;
   sqft: number;
   modelType: string;
   gapInches: number;
@@ -115,6 +116,7 @@ export async function syncToGoogleSheets(
         label: o.label.trim() || `Opening ${i + 1}`,
         widthFt: o.width,
         heightFt: o.height,
+        quantity: o.quantity || 1,
         sqft: round2(r.sqft),
         modelType: o.modelType === "vertical" ? "Vertical" : "Horizontal",
         gapInches: o.gapInches,

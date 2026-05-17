@@ -1,0 +1,56 @@
+Update the existing 5G Invisible Grille Smart Calculator app only. Do not redesign, remove, rename, or break any current feature, UI, calculations, saved projects, Google Sheets sync, WhatsApp share, or settings. Keep all existing business logic unchanged unless required for this exact update.
+
+I need one new feature for repeated same-size openings:
+
+Requirement:
+- In each opening card, add a new numeric input field called: Quantity
+- Default quantity must be 1
+- Minimum quantity must be 1
+- This quantity means how many windows/openings have the exact same width and height and same opening settings
+
+Example:
+- If width = 10 feet
+- height = 5 feet
+- and there are 10 same windows
+- I should enter Quantity = 10
+- Then the app should calculate total materials and totals as 10 identical openings automatically
+
+Behavior rules:
+1. Quantity multiplies the full result of that opening:
+   - sqft
+   - rope lines total usage
+   - rope meters
+   - channel feet
+   - channel pieces
+   - fasteners
+   - stiffner lines/meters
+   - wire cost
+   - channel cost
+   - fastener cost
+   - stiffner cost
+   - labour cost
+   - subtotal
+2. Quantity should affect grand totals also
+3. Google Sheets sync must save quantity too
+4. WhatsApp share must show quantity clearly
+5. Saved projects must store and reload quantity correctly
+6. If quantity = 1, app should behave exactly like now
+7. Do not create 10 separate opening cards when quantity is 10; keep it as one opening card with one quantity input
+8. Preserve all existing calculations and UI as much as possible
+
+Implementation details:
+- Add `quantity` to the opening data model
+- Default `quantity: 1` for new openings
+- Update calculations source of truth
+- Update web saved project storage
+- Update Google Sheets payload and Apps Script fields if needed
+- Update project load/save logic
+- Update share output text to include quantity
+- Show the quantity field in the opening card in a simple way near width/height inputs
+
+Important:
+- Do not change unrelated features
+- Do not break existing Google Sheets sync
+- Do not change default gap size, stiffner rate, or other business settings
+- After making changes, explain exactly which files were changed
+- Also show me one example calculation using width 10, height 5, quantity 10

@@ -18,6 +18,7 @@ export interface OpeningFormState {
   label: string;
   width: string;
   height: string;
+  quantity: string;
   modelType: ModelType;
   gapInches: GapInches;
   stiffnerLineCount: string;
@@ -81,7 +82,12 @@ export function OpeningCard({
             numberOfLines={1}
           >
             {results.sqft > 0
-              ? `${fmtNum(results.sqft)} sqft`
+              ? (() => {
+                  const qty = Math.max(1, parseInt(state.quantity) || 1);
+                  return qty > 1
+                    ? `${fmtNum(results.sqft / qty)} ×${qty} = ${fmtNum(results.sqft)} sqft`
+                    : `${fmtNum(results.sqft)} sqft`;
+                })()
               : "Enter dimensions"}
           </Text>
         </View>
@@ -136,6 +142,14 @@ export function OpeningCard({
             onChangeText={(v) => update("height", v)}
             suffix="ft"
             placeholder="0"
+          />
+          <LabeledInput
+            flex={0.75}
+            label="Qty"
+            value={state.quantity}
+            onChangeText={(v) => update("quantity", v)}
+            placeholder="1"
+            keyboardType="numeric"
           />
         </View>
         <Segmented
