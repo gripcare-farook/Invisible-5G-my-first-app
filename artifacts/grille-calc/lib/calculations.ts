@@ -125,10 +125,12 @@ export function calculateOpening(
   const totalRopeFeet = ropeLineCount * lineLengthFt;
   const totalRopeMeters = totalRopeFeet * FT_TO_M;
 
+  const qty = Math.max(1, Math.round(num(o.quantity) || 1));
   const stdLen = CHANNEL_STANDARD_LENGTH_FT;
+  const autoVerticalChannelFeet = width * 2 * qty;
   const autoChannelPieces =
     o.modelType === "vertical"
-      ? Math.ceil(width / stdLen) * 2
+      ? Math.ceil(autoVerticalChannelFeet / stdLen)
       : Math.ceil(height / stdLen) * 2;
 
   const overrideVal =
@@ -150,10 +152,13 @@ export function calculateOpening(
     channelUsedFeet = channelPieces * stdLen;
   } else {
     channelPieces = autoChannelPieces;
-    channelUsedFeet = channelPieces * stdLen;
+    channelUsedFeet =
+      o.modelType === "vertical" ? autoVerticalChannelFeet : channelPieces * stdLen;
+    channelBalanceFeet = channelPieces * stdLen - channelUsedFeet;
   }
 
-  const totalChannelFeet = channelPieces * stdLen;
+  const isAutoVertical = o.modelType === "vertical" && overrideVal === 0;
+  const totalChannelFeet = isAutoVertical ? channelUsedFeet : channelPieces * stdLen;
   const fastenerQty = totalChannelFeet;
 
   const stiffnerDimFt = o.modelType === "vertical" ? width : height;
@@ -173,33 +178,37 @@ export function calculateOpening(
       : totalStiffnerMeters * num(s.stiffnerCostPerMeter);
   const labourCost = sqft * num(s.labourCostPerSqft);
 
-  const subtotal = wireCost + channelCost + fastenerCost + stiffnerCost + labourCost;
-
-  const qty = Math.max(1, Math.round(num(o.quantity) || 1));
+  const channelQtyMultiplier = isAutoVertical ? 1 : qty;
+  const subtotal =
+    wireCost * qty +
+    channelCost * channelQtyMultiplier +
+    fastenerCost * channelQtyMultiplier +
+    stiffnerCost * qty +
+    labourCost * qty;
   return {
     sqft: sqft * qty,
     ropeLineCount: ropeLineCount * qty,
     totalRopeFeet: totalRopeFeet * qty,
     totalRopeMeters: totalRopeMeters * qty,
-    channelPieces: channelPieces * qty,
-    totalChannelFeet: totalChannelFeet * qty,
+    channelPieces: channelPieces * channelQtyMultiplier,
+    totalChannelFeet: totalChannelFeet * channelQtyMultiplier,
     channelInputMode: inputMode,
-    channelEnteredFeet: channelEnteredFeet * qty,
-    channelUsedFeet: channelUsedFeet * qty,
-    channelBalanceFeet: channelBalanceFeet * qty,
+    channelEnteredFeet: channelEnteredFeet * channelQtyMultiplier,
+    channelUsedFeet: channelUsedFeet * channelQtyMultiplier,
+    channelBalanceFeet: channelBalanceFeet * channelQtyMultiplier,
     channelRatePerFoot,
-    fastenerQty: fastenerQty * qty,
+    fastenerQty: fastenerQty * channelQtyMultiplier,
     stiffnerPiecesPerLine,
     stiffnerPieces: stiffnerPieces * qty,
     stiffnerLineCount: stiffnerLineCount * qty,
     totalStiffnerFeet: totalStiffnerFeet * qty,
     totalStiffnerMeters: totalStiffnerMeters * qty,
     wireCost: wireCost * qty,
-    channelCost: channelCost * qty,
-    fastenerCost: fastenerCost * qty,
+    channelCost: channelCost * channelQtyMultiplier,
+    fastenerCost: fastenerCost * channelQtyMultiplier,
     stiffnerCost: stiffnerCost * qty,
     labourCost: labourCost * qty,
-    subtotal: subtotal * qty,
+    subtotal,
   };
 }
 
@@ -222,12 +231,22 @@ export function calculateProject(
   let fastenerCost = 0;
   let stiffnerCost = 0;
   let labourCost = 0;
+  let autoVerticalChannelFeet = 0;
 
-  for (const r of results) {
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const opening = openings[i];
     totalSqft += r.sqft;
     totalRopeLines += r.ropeLineCount;
     totalRopeMeters += r.totalRopeMeters;
-    totalChannelPieces += r.channelPieces;
+    const isAutoVertical =
+      opening.modelType === "vertical" &&
+      !(opening.channelOverride && opening.channelOverride > 0);
+    if (isAutoVertical) {
+      autoVerticalChannelFeet += r.totalChannelFeet;
+    } else {
+      totalChannelPieces += r.channelPieces;
+    }
     totalChannelFeet += r.totalChannelFeet;
     totalFasteners += r.fastenerQty;
     totalStiffnerLines += r.stiffnerLineCount;
@@ -238,6 +257,7 @@ export function calculateProject(
     stiffnerCost += r.stiffnerCost;
     labourCost += r.labourCost;
   }
+  totalChannelPieces += Math.ceil(autoVerticalChannelFeet / CHANNEL_STANDARD_LENGTH_FT);
 
   const shippingCost =
     s.shippingMode === "manual"
