@@ -2,6 +2,8 @@ services:
   - type: web
     name: grille-calc
     runtime: node
+    plan: free
+    healthCheckPath: /api/health
     buildCommand: corepack enable && pnpm install --frozen-lockfile && BASE_PATH=/ pnpm --filter @workspace/grille-calc-web build && pnpm --filter @workspace/api-server build
     startCommand: pnpm --filter @workspace/api-server start
     envVars:
