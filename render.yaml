@@ -3,7 +3,7 @@ services:
     name: grille-calc
     runtime: node
     plan: free
-    healthCheckPath: /api/health
+    healthCheckPath: /api/healthz
     buildCommand: pnpm install --frozen-lockfile && BASE_PATH=/ pnpm --filter @workspace/grille-calc-web build && pnpm --filter @workspace/api-server build
     startCommand: pnpm --filter @workspace/api-server start
     envVars:
