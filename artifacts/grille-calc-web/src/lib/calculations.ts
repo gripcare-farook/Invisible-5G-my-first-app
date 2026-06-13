@@ -1,7 +1,7 @@
 export type ModelType = "vertical" | "horizontal";
 export type GapInches = 2 | 3 | 4;
 export type StiffnerCostMode = "perPiece" | "perMeter";
-export type ShippingMode = "manual" | "distance";
+export type ShippingMode = "manual" | "distance" | "route";
 export type ChannelInputMode = "pcs" | "feet";
 
 export const CHANNEL_STANDARD_LENGTH_FT = 10;
@@ -243,9 +243,9 @@ export function calculateProject(openings: Opening[], s: SharedInputs): ProjectT
   totalChannelPieces += Math.ceil(autoVerticalChannelFeet / CHANNEL_STANDARD_LENGTH_FT);
 
   const shippingCost =
-    s.shippingMode === "manual"
-      ? num(s.shippingCostManual)
-      : num(s.distanceKm) * num(s.costPerKm);
+    s.shippingMode === "distance"
+      ? num(s.distanceKm) * num(s.costPerKm)
+      : num(s.shippingCostManual);
   const otherCost = num(s.miscCost) + num(s.connectorCost);
   const totalCost = wireCost + channelCost + fastenerCost + stiffnerCost + labourCost + shippingCost + otherCost;
   const costPerSqft = totalSqft > 0 ? totalCost / totalSqft : 0;

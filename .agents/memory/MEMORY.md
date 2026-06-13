@@ -1,0 +1,2 @@
+- [Transport module architecture](transport-module.md) — auth via express-session+bcryptjs; users seeded at startup from env vars; Metro blockList fix required for Expo+react-router coexistence.
+- [Drizzle + Express 5 param typing](drizzle-express5-params.md) — req.params values must be cast to String() before passing to drizzle eq() to avoid TS2769 overload errors.

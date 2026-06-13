@@ -10,6 +10,9 @@ import {
 } from "@/lib/storage";
 import { shareViaWhatsApp } from "@/lib/share";
 import { syncToGoogleSheets } from "@/lib/sheets";
+import { TransportData, calcTransport, emptyTransportData } from "@/lib/transport";
+import { useAuth } from "@/lib/auth-context";
+import TransportForm from "@/components/TransportForm";
 import { LoadedProject } from "@/App";
 
 type SyncState = "idle" | "syncing" | "sent" | "error";
@@ -77,7 +80,7 @@ interface SharedForm {
   stiffnerCostMode: StiffnerCostMode;
 }
 
-function settingsToSharedInputs(s: Settings, f: SharedForm): SharedInputs {
+function settingsToSharedInputs(s: Settings, f: SharedForm, transportCostOverride?: number): SharedInputs {
   return {
     clientName: f.clientName.trim(),
     wireCostPerMeter: s.wireCostPerMeter,
@@ -92,7 +95,9 @@ function settingsToSharedInputs(s: Settings, f: SharedForm): SharedInputs {
     baseLocation: s.baseLocation,
     siteLocation: f.siteLocation.trim(),
     shippingMode: f.shippingMode,
-    shippingCostManual: toNum(f.shippingCostManual),
+    shippingCostManual: f.shippingMode === "route" && transportCostOverride !== undefined
+      ? transportCostOverride
+      : toNum(f.shippingCostManual),
     distanceKm: toNum(f.distanceKm),
     costPerKm: s.costPerKm,
     sellingPricePerSqft: toNum(f.sellingPricePerSqft),
@@ -175,6 +180,8 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
   const [saveMsg, setSaveMsg] = useState("");
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMsg, setSyncMsg] = useState("");
+  const [transport, setTransport] = useState<TransportData | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (isActive) setSettings(loadSettings());
@@ -197,6 +204,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
     }));
     setNotes(loadProject.notes ?? "");
     setEditingId(loadProject.id);
+    setTransport(loadProject.transportData ?? null);
     setOpenings(
       loadProject.openings.map((o) => ({
         id: o.id,
@@ -228,7 +236,8 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
   }
 
   const openingData = openings.map(formToOpening);
-  const sharedInputs = settingsToSharedInputs(settings, shared);
+  const transportResult = shared.shippingMode === "route" && transport ? calcTransport(transport) : null;
+  const sharedInputs = settingsToSharedInputs(settings, shared, transportResult?.totalCost);
   const totals: ProjectTotals | null = openingData.some((o) => o.width > 0 && o.height > 0)
     ? calculateProject(openingData, sharedInputs)
     : null;
@@ -245,6 +254,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
       updatedAt: now,
       openings: openingData,
       shared: sharedInputs,
+      transportData: transport ?? undefined,
     });
     setEditingId(id);
     setSaveMsg(editingId ? "Updated!" : "Saved!");
@@ -263,6 +273,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
     setEditingId(null);
     setSaveMsg("");
     setSyncState("idle");
+    setTransport(null);
   }
 
   function handleShare() {
@@ -283,16 +294,42 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
     setSyncMsg("Sending to Google Sheets...");
     const projectId = editingId ?? newId();
     const projectName = shared.projectName.trim() || shared.clientName.trim() || `Project ${new Date().toLocaleDateString("en-IN")}`;
-    const result = await syncToGoogleSheets(url, projectId, projectName, openingData, sharedInputs, totals, notes);
-    if (result.sent) {
+
+    const sheetsResult = await syncToGoogleSheets(url, projectId, projectName, openingData, sharedInputs, totals, notes);
+
+    let transportMsg = "";
+    if (shared.shippingMode === "route" && transport && user?.role === "admin") {
+      try {
+        const tResult = calcTransport(transport);
+        const resp = await fetch("/api/transport/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            projectId,
+            projectName,
+            clientName: shared.clientName,
+            siteLocation: shared.siteLocation,
+            transport,
+            result: tResult,
+          }),
+        });
+        const data = (await resp.json()) as { success: boolean; message?: string };
+        transportMsg = data.success ? " Transport saved." : ` Transport: ${data.message ?? "failed."}`;
+      } catch {
+        transportMsg = " Transport sync failed.";
+      }
+    }
+
+    if (sheetsResult.sent) {
       setSyncState("sent");
-      setSyncMsg(result.message);
-      saveProject({ id: projectId, name: projectName, notes: notes.trim() || undefined, createdAt: Date.now(), updatedAt: Date.now(), openings: openingData, shared: sharedInputs });
+      setSyncMsg(sheetsResult.message + transportMsg);
+      saveProject({ id: projectId, name: projectName, notes: notes.trim() || undefined, createdAt: Date.now(), updatedAt: Date.now(), openings: openingData, shared: sharedInputs, transportData: transport ?? undefined });
       setEditingId(projectId);
       setTimeout(() => setSyncState("idle"), 5000);
     } else {
       setSyncState("error");
-      setSyncMsg(result.message);
+      setSyncMsg(sheetsResult.message + transportMsg);
       setTimeout(() => setSyncState("idle"), 5000);
     }
   }
@@ -481,22 +518,44 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
         <div>
           <Label>Mode</Label>
           <ToggleGroup
-            options={[{ label: "Manual", value: "manual" }, { label: "By Distance", value: "distance" }]}
+            options={[
+              { label: "Manual", value: "manual" },
+              { label: "By KM", value: "distance" },
+              { label: "Route", value: "route" },
+            ]}
             value={shared.shippingMode}
-            onChange={(v) => setShared((p) => ({ ...p, shippingMode: v }))}
+            onChange={(v: ShippingMode) => {
+              setShared((p) => ({ ...p, shippingMode: v }));
+              if (v === "route" && !transport) {
+                setTransport(emptyTransportData(settings.baseLocation, settings.costPerKm));
+              }
+            }}
           />
         </div>
-        {shared.shippingMode === "manual" ? (
+        {shared.shippingMode === "manual" && (
           <div>
             <Label>Shipping Cost (₹)</Label>
             <Input type="number" inputMode="numeric" value={shared.shippingCostManual} onChange={(e) => setShared((p) => ({ ...p, shippingCostManual: e.target.value }))} placeholder="0" />
           </div>
-        ) : (
+        )}
+        {shared.shippingMode === "distance" && (
           <div>
             <Label>Distance (km)</Label>
             <Input type="number" inputMode="decimal" value={shared.distanceKm} onChange={(e) => setShared((p) => ({ ...p, distanceKm: e.target.value }))} placeholder="0" />
             <p className="text-xs text-muted-foreground mt-1">Rate: ₹{settings.costPerKm}/km (from Settings)</p>
           </div>
+        )}
+        {shared.shippingMode === "route" && transport && (
+          <TransportForm value={transport} onChange={setTransport} />
+        )}
+        {shared.shippingMode === "route" && !transport && (
+          <button
+            type="button"
+            onClick={() => setTransport(emptyTransportData(settings.baseLocation, settings.costPerKm))}
+            className="w-full py-2.5 text-sm text-[#1e3a8a] font-medium border border-dashed border-[#1e3a8a]/40 rounded-xl hover:bg-[#1e3a8a]/5"
+          >
+            + Initialize Transport Route
+          </button>
         )}
       </div>
 

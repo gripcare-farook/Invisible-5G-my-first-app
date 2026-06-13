@@ -1,0 +1,228 @@
+Update the EXISTING 5G Grille Calculator application deployed at:
+
+https://grille-calc.onrender.com/
+
+Do not create a new application. Extend the existing application without breaking current grille calculations, projects, quotations, Google Sheets sync, or existing saved records.
+
+IMPORTANT SAVE & SYNC REQUIREMENT
+
+The application already has an existing “Save & Sync” button.
+
+Do not create a separate Save & Sync button for transport inside the grille project/quotation page.
+
+When the user clicks the EXISTING Save & Sync button:
+
+1. Save and sync all current grille project/quotation details using the existing behavior.
+2. Also save and sync the associated transport/shipping calculation.
+3. Update the related Google Sheet transport records.
+4. Link transport records using the existing Project ID / Quotation ID.
+5. Save the complete transport route, delivery stops, charges, and ledger entry.
+6. Prevent duplicate transport records when Save & Sync is clicked multiple times.
+7. If a transport record already exists, update it instead of creating another row.
+8. Show whether both project sync and transport sync succeeded.
+9. Preserve transport data if either sync operation fails.
+10. Do not add the shipping cost more than once to the quotation total.
+
+The existing Save & Sync operation must update:
+
+- Existing project/quotation Google Sheet records
+- Transport Calculation sheet
+- Transport Deliveries sheet
+- Transport Ledger sheet
+
+TRANSPORT CALCULATION INSIDE EXISTING SHIPPING COST
+
+Upgrade the existing Shipping Cost section to support:
+
+- Starting location / godown
+- Single or multiple delivery locations
+- Add, remove, and reorder delivery stops
+- Return to Godown toggle
+- Calculate actual driving route KM
+- Manual Total KM entry
+- Rate per KM
+- Minimum transport charge
+- Common toll charge
+- Per-stop toll charge
+- Loading/unloading charges
+- Waiting charges
+- Advance paid
+- Balance payable
+
+Example route:
+
+Godown, Kurinji Nagar, Old Perungalathur
+→ Shriram Park 63
+→ Hiranandani, Thalambur
+→ Appaswamy Altezza, Perungudi
+
+Calculate the actual route-leg distances and use their sum as Total Billable KM.
+
+TRANSPORT GOOGLE SHEETS
+
+Use these separate worksheet tabs:
+
+1. Transport Calculation
+Store one parent record per complete route.
+
+2. Transport Deliveries
+Store one child record per delivery location.
+
+3. Transport Ledger
+Store one payment-ledger record per complete route.
+
+All records must contain the related existing Project ID / Quotation ID.
+
+Use stable unique IDs and update matching rows during subsequent Save & Sync operations.
+
+SEPARATE TRANSPORT PAGE
+
+Add a dedicated page inside the existing application:
+
+/transport
+
+This page is mainly for the transport person, Javith Bai.
+
+The Transport page must provide a simple mobile-friendly driver interface containing only transport-related information and actions.
+
+Javith Bai must be able to:
+
+- View routes assigned to him
+- View today’s deliveries
+- View pending, delivered, and failed deliveries
+- Open each destination in Google Maps
+- View delivery stops in the correct order
+- View route distance and total KM
+- View customer/site name and contact details
+- Mark a stop as Delivered
+- Mark a stop as Failed / Reschedule
+- Add delivery notes
+- Add proof-of-delivery notes
+- Enter actual final KM after completing the route
+- Enter toll charges
+- Submit route completion
+- View progress such as “2 of 3 deliveries completed”
+
+Do not show grille pricing, profit, customer quotation totals, business reports, admin settings, or other sensitive business information on the Transport page.
+
+TRANSPORT PERSON ACCESS
+
+Provide Javith Bai access only to the Transport page.
+
+Implement secure role-based authentication and authorization.
+
+Required roles:
+
+- Admin / Owner
+- Transport Person
+
+Admin / Owner access:
+
+- Full access to the existing 5G Grille Calculator
+- Create and edit transport routes
+- Assign routes to transport persons
+- View Transport Ledger
+- View all transport costs and payments
+- Mark transport payments as paid
+- Access every existing application feature
+
+Transport Person access:
+
+- Can access only `/transport`
+- Can view only routes assigned to their account
+- Can update delivery status, notes, actual KM, and toll charges
+- Cannot access grille calculator pages
+- Cannot access quotation prices, profits, reports, settings, or Transport Ledger payment details
+- Cannot view routes assigned to other drivers
+- Cannot modify rate per KM, minimum charge, or calculated payment amount
+
+Do not rely only on hiding frontend navigation links. Enforce authorization in backend API routes as well.
+
+Create a transport-person account for:
+
+Name: Javith Bai
+Role: Transport Person
+
+Do not hardcode his password in source code. Provide a secure setup method using environment variables, invitation link, or the application’s existing authentication system.
+
+Suggested environment variables if the application has no existing authentication:
+
+JAVITH_BAI_EMAIL
+JAVITH_BAI_INITIAL_PASSWORD_HASH
+
+Prefer the application’s existing authentication and user-management patterns.
+
+ASSIGNMENT WORKFLOW
+
+From the existing project/quotation page, Admin must be able to:
+
+1. Enter the Shipping Cost and delivery-route details.
+2. Assign the route to Javith Bai.
+3. Click the existing Save & Sync button.
+4. Save the project and transport details together.
+5. Make the assigned route immediately visible on Javith Bai’s `/transport` page.
+
+When Javith Bai updates a delivery or completes a route:
+
+- Update the application database.
+- Update the matching Transport Deliveries record.
+- Update the parent Transport Calculation record.
+- Update actual KM and toll charges.
+- Recalculate final transport cost when allowed.
+- Update the Transport Ledger balance.
+- Sync changes to Google Sheets without creating duplicate rows.
+
+TRANSPORT PAGE ROUTE COMPLETION
+
+When Javith Bai completes the final delivery, show a completion form:
+
+- Actual final total KM
+- Actual toll charge
+- Additional waiting/unloading notes
+- Route completion notes
+
+After submission:
+
+- Mark the route Completed
+- Save the completed date and time
+- Update transport calculation
+- Update Google Sheets
+- Notify/show the Admin that the transport route is completed
+
+SECURITY REQUIREMENTS
+
+- Protect `/transport` using authenticated role-based access.
+- Protect all transport API routes.
+- Validate that the logged-in transport person owns the assigned route.
+- Never expose Google Sheets credentials or Google Maps API keys in frontend code.
+- Log important delivery status changes with user and timestamp.
+- Prevent transport users from changing payment rates or accessing admin-only values.
+
+TESTS REQUIRED
+
+Add tests for:
+
+- Existing Save & Sync saves project and transport together
+- Existing Save & Sync updates matching transport records without duplicates
+- Assigned route appears on Javith Bai’s Transport page
+- Transport Person can access `/transport`
+- Transport Person cannot access admin or grille calculator pages
+- Transport Person sees only assigned routes
+- Transport Person cannot modify rate or payment amount
+- Delivery-status updates sync correctly
+- Actual KM and toll submission updates transport calculation
+- Route completion updates Transport Calculation, Transport Deliveries, and Transport Ledger
+- Existing grille calculator and quotation workflows continue to work
+
+BEFORE FINISHING
+
+1. Inspect and follow the existing application architecture.
+2. Preserve the current Save & Sync button and extend its operation.
+3. Run existing and new tests.
+4. Run type checking and production build.
+5. Verify Admin and Javith Bai access separately.
+6. Verify transport records update instead of duplicating.
+7. Verify all required Google Sheet tabs sync correctly.
+8. Verify the Transport page on mobile.
+9. Document how to create/login to Javith Bai’s account.
+10. Clearly list required environment variables and remaining setup.

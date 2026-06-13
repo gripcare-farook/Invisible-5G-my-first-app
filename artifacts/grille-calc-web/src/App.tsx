@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { Calculator, FolderOpen, Settings } from "lucide-react";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { Calculator, FolderOpen, Settings, Truck, LogIn } from "lucide-react";
 import CalculatorPage from "@/pages/CalculatorPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import LoginPage from "@/pages/LoginPage";
+import TransportPage from "@/pages/TransportPage";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SavedProject } from "@/lib/storage";
 import { Opening, SharedInputs } from "@/lib/calculations";
+import { TransportData } from "@/lib/transport";
 
 type Tab = "calculator" | "projects" | "settings";
 
@@ -14,14 +19,24 @@ export interface LoadedProject {
   notes?: string;
   openings: Opening[];
   shared: SharedInputs;
+  transportData?: TransportData;
 }
 
-export default function App() {
+function MainApp() {
   const [tab, setTab] = useState<Tab>("calculator");
   const [loadProject, setLoadProject] = useState<LoadedProject | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   function handleLoadProject(p: SavedProject) {
-    setLoadProject({ id: p.id, name: p.name, notes: p.notes, openings: p.openings, shared: p.shared });
+    setLoadProject({
+      id: p.id,
+      name: p.name,
+      notes: p.notes,
+      openings: p.openings,
+      shared: p.shared,
+      transportData: p.transportData,
+    });
     setTab("calculator");
   }
 
@@ -32,7 +47,6 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col max-w-xl mx-auto bg-background">
       <div className="flex-1 overflow-y-auto pb-20">
-        {/* Keep Calculator always mounted to preserve form state across tab switches */}
         <div className={tab !== "calculator" ? "hidden" : ""}>
           <CalculatorPage
             isActive={tab === "calculator"}
@@ -40,9 +54,7 @@ export default function App() {
             onProjectLoaded={handleProjectLoaded}
           />
         </div>
-        {tab === "projects" && (
-          <ProjectsPage onLoad={handleLoadProject} />
-        )}
+        {tab === "projects" && <ProjectsPage onLoad={handleLoadProject} />}
         {tab === "settings" && <SettingsPage />}
       </div>
 
@@ -58,16 +70,46 @@ export default function App() {
             key={key}
             onClick={() => setTab(key)}
             className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
-              tab === key
-                ? "text-[#1e3a8a]"
-                : "text-muted-foreground hover:text-foreground"
+              tab === key ? "text-[#1e3a8a]" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Icon size={22} strokeWidth={tab === key ? 2.5 : 1.8} />
             {label}
           </button>
         ))}
+        {user ? (
+          <button
+            onClick={() => navigate("/transport")}
+            className="flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium text-muted-foreground hover:text-[#1e3a8a] transition-colors"
+          >
+            <Truck size={22} strokeWidth={1.8} />
+            Transport
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/login")}
+            className="flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogIn size={22} strokeWidth={1.8} />
+            Login
+          </button>
+        )}
       </nav>
     </div>
+  );
+}
+
+export default function App() {
+  const basename = import.meta.env.BASE_URL.replace(/\/+$/, "");
+  return (
+    <BrowserRouter basename={basename}>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<MainApp />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/transport" element={<TransportPage />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

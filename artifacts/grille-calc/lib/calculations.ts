@@ -1,7 +1,7 @@
 export type ModelType = "vertical" | "horizontal";
 export type GapInches = 2 | 3 | 4;
 export type StiffnerCostMode = "perPiece" | "perMeter";
-export type ShippingMode = "manual" | "distance";
+export type ShippingMode = "manual" | "distance" | "route";
 export type ChannelInputMode = "pcs" | "feet";
 
 export const CHANNEL_STANDARD_LENGTH_FT = 10;

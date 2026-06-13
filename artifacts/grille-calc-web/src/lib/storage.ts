@@ -1,4 +1,5 @@
 import { Opening, SharedInputs } from "./calculations";
+import { TransportData } from "./transport";
 
 const KEY_SETTINGS = "@grille/settings_v1";
 const KEY_PROJECTS = "@grille/projects_v2";
@@ -37,6 +38,7 @@ export interface SavedProject {
   updatedAt: number;
   openings: Opening[];
   shared: SharedInputs;
+  transportData?: TransportData;
 }
 
 export function loadSettings(): Settings {

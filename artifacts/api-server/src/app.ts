@@ -1,10 +1,14 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import session from "express-session";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { seedUsers } from "./lib/seed";
+import "./types/session.d";
 
 const app: Express = express();
 const distDir = path.dirname(fileURLToPath(import.meta.url));
@@ -12,6 +16,8 @@ const frontendDir = path.resolve(
   distDir,
   "../../grille-calc-web/dist/public",
 );
+
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -32,9 +38,25 @@ app.use(
     },
   }),
 );
-app.use(cors());
+
+app.use(cors({ credentials: true, origin: true }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  session({
+    secret: process.env["SESSION_SECRET"] ?? "grille-dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env["NODE_ENV"] === "production",
+      sameSite: process.env["NODE_ENV"] === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  }),
+);
 
 app.use("/api", router);
 
@@ -45,5 +67,9 @@ if (process.env["NODE_ENV"] === "production") {
     res.sendFile(path.join(frontendDir, "index.html"));
   });
 }
+
+seedUsers().catch((err) => {
+  logger.warn({ err: err instanceof Error ? err.message : String(err) }, "seed: skipped (DB may not be ready)");
+});
 
 export default app;
