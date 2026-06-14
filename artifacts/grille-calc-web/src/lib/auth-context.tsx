@@ -1,15 +1,17 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
+export type UserRole = "admin" | "transport" | "labour_contractor" | "labour_worker";
+
 export interface AuthUser {
   id: number;
   name: string;
-  role: "admin" | "transport";
+  role: UserRole;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; message?: string; user?: AuthUser }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -38,20 +40,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    void refresh();
+  }, []);
 
-  async function login(email: string, password: string) {
+  async function login(username: string, password: string) {
     try {
       const resp = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: username, password }),
       });
       const data = (await resp.json()) as { success: boolean; message?: string; user?: AuthUser };
       if (data.success && data.user) {
         setUser(data.user);
-        return { success: true };
+        return { success: true, user: data.user };
       }
       return { success: false, message: data.message ?? "Login failed." };
     } catch {
@@ -69,4 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+export function roleDashboard(role: UserRole): string {
+  if (role === "admin") return "/admin";
+  if (role === "transport") return "/transport";
+  if (role === "labour_contractor") return "/labour";
+  return "/worker";
 }

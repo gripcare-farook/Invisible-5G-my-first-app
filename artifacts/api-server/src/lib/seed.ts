@@ -3,10 +3,12 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
+type UserRole = "admin" | "transport" | "labour_contractor" | "labour_worker";
+
 interface SeedUser {
   email: string;
   name: string;
-  role: "admin" | "transport";
+  role: UserRole;
   passwordHash: string;
 }
 
@@ -21,6 +23,12 @@ async function upsertUser(u: SeedUser): Promise<void> {
   }
 }
 
+const STATIC_USERS: Array<{ email: string; name: string; role: UserRole; password: string }> = [
+  { email: "8122676635", name: "Javith Bai",  role: "transport",          password: "admin" },
+  { email: "9087177507", name: "Pallavan",     role: "labour_contractor",  password: "admin" },
+  { email: "7397271927", name: "Naresh",       role: "labour_worker",      password: "admin" },
+];
+
 export async function seedUsers(): Promise<void> {
   const adminEmail = process.env["ADMIN_EMAIL"];
   const adminPasswordHash = process.env["ADMIN_PASSWORD_HASH"];
@@ -28,15 +36,11 @@ export async function seedUsers(): Promise<void> {
 
   if (adminEmail && (adminPasswordHash || adminPassword)) {
     const hash = adminPasswordHash ?? (await bcrypt.hash(adminPassword!, 12));
-    await upsertUser({ email: adminEmail, name: "Admin", role: "admin", passwordHash: hash });
+    await upsertUser({ email: adminEmail.toLowerCase().trim(), name: "Admin", role: "admin", passwordHash: hash });
   }
 
-  const driverEmail = process.env["JAVITH_BAI_EMAIL"];
-  const driverPasswordHash = process.env["JAVITH_BAI_INITIAL_PASSWORD_HASH"];
-  const driverPassword = process.env["JAVITH_BAI_INITIAL_PASSWORD"];
-
-  if (driverEmail && (driverPasswordHash || driverPassword)) {
-    const hash = driverPasswordHash ?? (await bcrypt.hash(driverPassword!, 12));
-    await upsertUser({ email: driverEmail, name: "Javith Bai", role: "transport", passwordHash: hash });
+  for (const u of STATIC_USERS) {
+    const hash = await bcrypt.hash(u.password, 10);
+    await upsertUser({ email: u.email, name: u.name, role: u.role, passwordHash: hash });
   }
 }

@@ -1,31 +1,30 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, roleDashboard } from "@/lib/auth-context";
 import { LogIn, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (user) {
-    if (user.role === "transport") navigate("/transport", { replace: true });
-    else navigate("/", { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user) navigate(roleDashboard(user.role), { replace: true });
+  }, [user, navigate]);
+
+  if (user) return null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const result = await login(email, password);
+    const result = await login(username.trim(), password);
     setLoading(false);
-    if (result.success) {
-      if (user?.role === "transport") navigate("/transport", { replace: true });
-      else navigate("/", { replace: true });
+    if (result.success && result.user) {
+      navigate(roleDashboard(result.user.role), { replace: true });
     } else {
       setError(result.message ?? "Login failed.");
     }
@@ -44,13 +43,16 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-border p-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Email</label>
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+              Username / Mobile Number
+            </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Email or mobile number"
               required
+              autoComplete="username"
               className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40"
             />
           </div>
@@ -62,6 +64,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              autoComplete="current-password"
               className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40"
             />
           </div>
@@ -78,13 +81,15 @@ export default function LoginPage() {
             className="w-full flex items-center justify-center gap-2 bg-[#1e3a8a] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#1e3a8a]/90 disabled:opacity-50 transition-colors"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
           Admin calculator available without login.{" "}
-          <button onClick={() => navigate("/")} className="text-[#1e3a8a] underline">Back to calculator</button>
+          <button onClick={() => navigate("/calculator")} className="text-[#1e3a8a] underline">
+            Open Calculator
+          </button>
         </p>
       </div>
     </div>

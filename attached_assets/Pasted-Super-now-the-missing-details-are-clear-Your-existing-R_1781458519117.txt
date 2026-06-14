@@ -1,0 +1,400 @@
+Super — now the missing details are clear. Your existing Replit app already has role-based login groundwork, transport features, session auth, Google Sheets sync, calculator flow, and transport APIs, so the next prompt should explicitly extend that current system instead of rebuilding it.
+
+Final prompt
+Copy this full prompt into Replit:
+
+Prompt:
+
+Do not rebuild this app from scratch. Extend the existing 5G Invisible Grille app only. Preserve all current working features, routes, calculator logic, Google Sheets sync, transport sync, authentication, project save/edit flow, mobile responsiveness, and existing database logic. The current app already contains calculator, projects, settings, transport, login/session auth, transport APIs, seeded users, and Google Sheets synchronization, so all new work must be built on top of the current codebase without removing anything.
+
+Make the login page the first screen of the app. After login, redirect each user to their own role-based dashboard. Keep current auth/session architecture and expand it.
+
+Login roles and credentials
+Implement these roles:
+
+Admin
+
+Username: gripcare@gmail.com
+
+Password: 1706
+
+Transport
+
+Username: mobile number as username
+
+Default password: admin
+
+Labour contractor
+
+Username: mobile number as username
+
+Default password: admin
+
+Labour contractor worker
+
+Username: mobile number as username
+
+Default password: admin
+
+Add a change-password option for future use, but for now seed the non-admin users with mobile-number-based username and default password admin.
+
+After login, show a personalized welcome message in the dashboard for each user.
+
+General system rules
+Do not break existing calculator, project details entry, Save, WhatsApp, Save & Sync to Google Sheets, transport route flow, or current database integrations.
+
+All dashboard data must come from the existing project data and current Google Sheets/database-backed project records wherever already available. The existing app already saves project details like project name, client name, site location, openings, shipping, and notes, so reuse that data directly.
+
+Where current data is already available in Google Sheets/database, retrieve and display it rather than asking for duplicate manual input.
+
+If new fields/tables are needed, add them safely with migrations and full backward compatibility.
+
+Keep UI consistent with the current web app design.
+
+Dashboard requirements
+1. Admin dashboard
+Create a full admin dashboard with:
+
+Welcome message for admin
+
+Link/button to open the 5G Invisible Grille calculator page
+
+Total profit
+
+Upcoming site details
+
+Finished projects details
+
+Lead follow-up details
+
+Quote update notifications
+
+Transport summary
+
+Labour summary
+
+Pending measurement rechecks
+
+Completed project status
+
+Payment overview where data is available
+
+Admin dashboard must combine all modules into one overview panel.
+
+2. Transport dashboard
+Create a transport dashboard for Javith Bai showing:
+
+Welcome message
+
+Upcoming deliveries
+
+Site location
+
+Flat number
+
+Project name
+
+Delivery date and status
+
+Materials to be delivered to site
+
+Required materials for the project
+
+Advance amount
+
+Finished delivery transport amount
+
+Payable amount
+
+Completed delivery/project transport settlement summary
+
+Transport material display must be derived from existing project entry and calculation data. The current app already supports project openings and shipping/transport-related flow, so use project openings plus saved transport data to compute material requirements.
+
+Example logic:
+If project details contain:
+
+Shriram Park 63
+
+One balcony 10W x 9H
+
+One window vertical 6W x 5H
+
+Then show a clear material requirement summary such as:
+
+Total channels required: 4
+
+Balance 4 feet x 2 nos returned to godown
+
+Rope bundle usage and remaining balance
+
+Returnable vs non-returnable material handling
+
+Rules:
+
+Returnable materials like channel balance must show in transport dashboard as return-to-godown
+
+Non-returnable or partially consumable balance such as rope should not be shown as return-to-godown; instead pass the relevant usable balance visibility to the labour contractor dashboard
+
+Rope, fasteners, stiffeners, channels, and other required dispatch materials must be visible in transport dashboard
+
+Site location and flat number must come from project database/project details
+
+Transport amount calculation:
+
+Use completed delivery data
+
+Show advance amount
+
+Show total transport amount
+
+Show payable balance
+
+Show finished-project transport settlement summary
+
+3. Labour contractor dashboard
+Create a labour contractor dashboard for Pallavan showing:
+
+Welcome message
+
+Upcoming project details
+
+Site location
+
+Flat number
+
+Finished projects details
+
+Balance materials handed from transport where applicable
+
+Weekly labour payment from Monday to Saturday
+
+Calendar view
+
+Date-to-date selection in calendar
+
+Selected date range total payment
+
+Project-wise agreed amount
+
+Site measurement recheck input
+
+Work completion photo upload
+
+4. Labour worker dashboard
+Create a simpler worker dashboard for Naresh showing:
+
+Welcome message
+
+Assigned project list
+
+Site location
+
+Flat number
+
+Work status
+
+Limited task updates
+
+Measurement confirmation or update only if permission is granted
+
+Work completion photo upload if permitted
+
+Worker must not see admin finance, lead tracking, or all-project access.
+
+Labour payment and project calculation rules
+Labour payment is already calculated on a per square foot basis in the existing 5G Invisible Grille calculation flow and is already saved in Google Sheets, so retrieve that existing labour amount and show it in the labour contractor dashboard instead of creating a separate manual labour calculation logic.
+
+Project calculation data is already stored in the Google Sheets/database setup, so retrieve existing calculated values from there and display them in the relevant dashboards instead of recalculating from scratch unless absolutely necessary.
+
+Where needed:
+
+Show project-wise fixed/agreed amount
+
+Show weekly totals Monday to Saturday
+
+Show date-range totals from calendar selection
+
+Keep calculations linked to saved project/project-completion records
+
+Measurement recheck flow
+When labour contractor or permitted worker reaches site:
+
+Open assigned project
+
+Recheck measurement details
+
+Submit updated measurements
+
+Update the corresponding project/opening records in database
+
+Mark who updated it and when
+
+Trigger a notification to admin if quote-related dimensions changed
+
+Do not remove the original saved project data; store recheck history safely so changes are auditable.
+
+Notifications
+Add an in-app notification system for admin. Admin should receive notifications when:
+
+Quote is updated and sent
+
+Measurements are rechecked or changed
+
+Delivery is completed
+
+Labour work is completed
+
+Project photos are uploaded
+
+Important payment values are updated
+
+Store notifications in database with:
+
+id
+
+type
+
+project id
+
+user id
+
+message
+
+read/unread status
+
+created timestamp
+
+Lead follow-up module
+Create a new lead follow-up module and combine it into admin dashboard.
+
+Lead follow-up must support:
+
+Lead name
+
+Phone number
+
+Location
+
+Requirement
+
+Source
+
+Follow-up date
+
+Status
+
+Notes
+
+Next action
+
+Assigned person
+
+Show pending and completed follow-ups in admin dashboard summary cards and detailed lists.
+
+Google Drive integration
+Use the existing Google account/storage available to save project completion photos into Google Drive. Files must be stored folder by folder with meaningful naming.
+
+Folder/file organization rule:
+
+Folder structure should include project name, client name, and site location
+
+File names should use project name + client name + site location + flat number + date/sequence where needed
+
+Example format:
+
+Folder: <Project Name> / <Client Name> / <Site Location>
+
+File name: <Project Name>_<Client Name>_<Site Location>_<Flat Number>_<Date or Sequence>
+
+Also save the uploaded file’s Google Drive reference/link in the database.
+
+If direct personal Google login integration is not ideal technically, implement secure Google Drive API integration/service flow in a maintainable way without breaking the app.
+
+Routing and UX rules
+Login page must load first
+
+After login, redirect based on role
+
+Admin goes to admin dashboard
+
+Transport goes to transport dashboard
+
+Labour contractor goes to labour dashboard
+
+Labour worker goes to worker dashboard
+
+Keep calculator page accessible through navigation based on permissions
+
+Keep current tabs/pages working
+
+Add proper loading, empty, and error states for all dashboards
+
+Maintain mobile-friendly layout
+
+Suggested implementation phases
+Keep existing auth/session structure and extend role mapping
+
+Make login route the default entry screen
+
+Add/change seeded users and mobile-number-based usernames
+
+Build role-based dashboards
+
+Connect dashboard widgets to existing Google Sheets/database project data
+
+Add transport material allocation and return logic
+
+Add labour weekly and date-range payment views
+
+Add measurement recheck update flow with history
+
+Add photo upload to Google Drive with naming/folder structure
+
+Add notifications system
+
+Add new lead follow-up module
+
+Test all existing features still work exactly as before
+
+Database/schema additions
+Only add what is required, for example:
+
+expanded users/roles support
+
+project_assignments
+
+material_dispatch
+
+material_return
+
+labour_payment_views or labour payment records
+
+measurement_rechecks
+
+project_photos
+
+notifications
+
+lead_followups
+
+Prefer reusing existing project and transport tables because the current app already has users, transport routes, transport deliveries, and transport ledger in PostgreSQL, plus working auth routes and transport APIs.
+
+Final output required from Replit
+After implementation, provide:
+
+Updated route map
+
+Role-permission matrix
+
+New and modified database schema summary
+
+New APIs added
+
+Google Drive upload approach summary
+
+End-to-end test checklist
+
+Confirmation that existing features remain unchanged and working
+
+Important instruction
+This is an enhancement of the current app. Do not remove, rewrite, or replace working features unless required for compatibility. Extend the current codebase safely and keep backward compatibility.

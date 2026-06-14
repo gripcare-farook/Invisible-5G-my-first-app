@@ -1,12 +1,15 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
-import { Calculator, FolderOpen, Settings, Truck, LogIn } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Calculator, FolderOpen, Settings, Truck, LogIn, Loader2 } from "lucide-react";
 import CalculatorPage from "@/pages/CalculatorPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import LoginPage from "@/pages/LoginPage";
 import TransportPage from "@/pages/TransportPage";
-import { AuthProvider, useAuth } from "@/lib/auth-context";
+import AdminDashboardPage from "@/pages/AdminDashboardPage";
+import LabourDashboardPage from "@/pages/LabourDashboardPage";
+import WorkerDashboardPage from "@/pages/WorkerDashboardPage";
+import { AuthProvider, useAuth, roleDashboard } from "@/lib/auth-context";
 import { SavedProject } from "@/lib/storage";
 import { Opening, SharedInputs } from "@/lib/calculations";
 import { TransportData } from "@/lib/transport";
@@ -20,6 +23,24 @@ export interface LoadedProject {
   openings: Opening[];
   shared: SharedInputs;
   transportData?: TransportData;
+}
+
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) navigate("/login", { replace: true });
+      else navigate(roleDashboard(user.role), { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 size={32} className="animate-spin text-[#1e3a8a]" />
+    </div>
+  );
 }
 
 function MainApp() {
@@ -79,11 +100,11 @@ function MainApp() {
         ))}
         {user ? (
           <button
-            onClick={() => navigate("/transport")}
+            onClick={() => navigate(roleDashboard(user.role))}
             className="flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium text-muted-foreground hover:text-[#1e3a8a] transition-colors"
           >
             <Truck size={22} strokeWidth={1.8} />
-            Transport
+            Dashboard
           </button>
         ) : (
           <button
@@ -105,9 +126,14 @@ export default function App() {
     <BrowserRouter basename={basename}>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<MainApp />} />
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/calculator" element={<MainApp />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/transport" element={<TransportPage />} />
+          <Route path="/labour" element={<LabourDashboardPage />} />
+          <Route path="/worker" element={<WorkerDashboardPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

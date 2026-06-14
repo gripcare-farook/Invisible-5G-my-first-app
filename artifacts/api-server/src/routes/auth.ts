@@ -35,7 +35,7 @@ router.post("/auth/login", async (req, res) => {
   }
 
   req.session.userId = user.id;
-  req.session.userRole = user.role as "admin" | "transport";
+  req.session.userRole = user.role as "admin" | "transport" | "labour_contractor" | "labour_worker";
   req.session.userName = user.name;
 
   logger.info({ userId: user.id, role: user.role }, "auth: login");
