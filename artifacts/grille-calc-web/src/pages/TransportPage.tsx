@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { MapPin, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Truck, LogOut, Navigation, Loader2, AlertCircle } from "lucide-react";
+import { MapPin, CheckCircle, XCircle, ChevronDown, ChevronUp, Truck, LogOut, Navigation, Loader2, AlertCircle } from "lucide-react";
 import { fmtINR } from "@/lib/calculations";
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, type ProjectStatus } from "@/lib/storage";
 
 interface Delivery {
   id: string;
@@ -136,7 +137,7 @@ function DeliveryCard({ delivery, routeId, onUpdate }: { delivery: Delivery; rou
   );
 }
 
-function RouteCard({ route, onUpdate }: { route: Route; onUpdate: () => void }) {
+function RouteCard({ route, projectStatus, onUpdate }: { route: Route; projectStatus?: ProjectStatus; onUpdate: () => void }) {
   const [expanded, setExpanded] = useState(true);
   const [showComplete, setShowComplete] = useState(false);
   const [actualKm, setActualKm] = useState(route.totalKmActual ?? route.totalKmEstimated ?? "");
@@ -165,7 +166,14 @@ function RouteCard({ route, onUpdate }: { route: Route; onUpdate: () => void }) 
     <div className="bg-white rounded-2xl border border-border overflow-hidden">
       <button type="button" onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3 bg-[#1e3a8a]/5">
         <div className="text-left">
-          <div className="font-bold text-sm text-[#1e3a8a]">{route.projectName}</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-sm text-[#1e3a8a]">{route.projectName}</span>
+            {projectStatus && (
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PROJECT_STATUS_COLORS[projectStatus]}`}>
+                {PROJECT_STATUS_LABELS[projectStatus]}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground">{route.clientName && `${route.clientName} · `}{route.siteLocation}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -247,6 +255,7 @@ export default function TransportPage() {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [projectStatusMap, setProjectStatusMap] = useState<Record<string, ProjectStatus>>({});
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
 
@@ -261,10 +270,21 @@ export default function TransportPage() {
     setFetching(true);
     setError("");
     try {
-      const resp = await fetch("/api/transport/my-routes", { credentials: "include" });
-      if (!resp.ok) throw new Error("Failed to load routes");
-      const data = (await resp.json()) as { success: boolean; routes: Route[] };
-      setRoutes(data.routes ?? []);
+      const [routeResp, projectResp] = await Promise.all([
+        fetch("/api/transport/my-routes", { credentials: "include" }),
+        fetch("/api/projects", { credentials: "include" }),
+      ]);
+      if (!routeResp.ok) throw new Error("Failed to load routes");
+      const routeData = (await routeResp.json()) as { success: boolean; routes: Route[] };
+      setRoutes(routeData.routes ?? []);
+      if (projectResp.ok) {
+        const projData = (await projectResp.json()) as { success: boolean; projects: Array<{ id: string; status: ProjectStatus }> };
+        if (projData.success) {
+          const map: Record<string, ProjectStatus> = {};
+          for (const p of projData.projects) map[p.id] = p.status;
+          setProjectStatusMap(map);
+        }
+      }
     } catch {
       setError("Could not load routes. Please try again.");
     } finally {
@@ -330,13 +350,13 @@ export default function TransportPage() {
             {activeRoutes.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Routes ({activeRoutes.length})</h2>
-                {activeRoutes.map((r) => <RouteCard key={r.id} route={r} onUpdate={loadRoutes} />)}
+                {activeRoutes.map((r) => <RouteCard key={r.id} route={r} projectStatus={projectStatusMap[r.projectId]} onUpdate={loadRoutes} />)}
               </div>
             )}
             {completedRoutes.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed ({completedRoutes.length})</h2>
-                {completedRoutes.map((r) => <RouteCard key={r.id} route={r} onUpdate={loadRoutes} />)}
+                {completedRoutes.map((r) => <RouteCard key={r.id} route={r} projectStatus={projectStatusMap[r.projectId]} onUpdate={loadRoutes} />)}
               </div>
             )}
           </>

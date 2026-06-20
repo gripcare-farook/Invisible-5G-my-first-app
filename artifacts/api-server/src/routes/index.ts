@@ -6,6 +6,7 @@ import transportRouter from "./transport";
 import adminRouter from "./admin";
 import leadsRouter from "./leads";
 import notificationsRouter from "./notifications";
+import projectsRouter from "./projects";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(transportRouter);
 router.use(adminRouter);
 router.use(leadsRouter);
 router.use(notificationsRouter);
+router.use(projectsRouter);
 
 export default router;

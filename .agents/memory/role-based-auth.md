@@ -12,3 +12,5 @@ description: Lessons from expanding the auth system to 4 roles (admin, transport
 **Rule 4 — Static user seeding:** Non-admin users (transport, labour_contractor, labour_worker) are seeded with hardcoded credentials in `seed.ts` (mobile number + default "admin" password), not from env vars. Only admin comes from ADMIN_EMAIL/ADMIN_PASSWORD secrets.
 
 **Rule 5 — rolesDashboard helper:** Export a `roleDashboard(role: UserRole): string` helper from `auth-context.tsx` to centralize the role → URL mapping so LoginPage, App.tsx redirect logic, and any nav component all use the same mapping.
+
+**Rule 6 — Session access in route handlers:** User info is stored on `req.session` (e.g. `req.session.userRole`, `req.session.userId`), NOT on `req.user`. The `requireAuth` middleware only checks `req.session.userId` exists; it does NOT attach a user object to `req`. Always read role from `req.session.userRole` in route handlers.

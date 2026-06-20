@@ -1,6 +1,25 @@
 import { Opening, SharedInputs } from "./calculations";
 import { TransportData } from "./transport";
 
+export const PROJECT_STATUSES = ["new", "assigned", "in_progress", "completed", "billed"] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  new: "New",
+  assigned: "Assigned",
+  in_progress: "In Progress",
+  completed: "Completed",
+  billed: "Billed",
+};
+
+export const PROJECT_STATUS_COLORS: Record<ProjectStatus, string> = {
+  new: "bg-blue-100 text-blue-800",
+  assigned: "bg-purple-100 text-purple-800",
+  in_progress: "bg-orange-100 text-orange-800",
+  completed: "bg-green-100 text-green-800",
+  billed: "bg-teal-100 text-teal-800",
+};
+
 const KEY_SETTINGS = "@grille/settings_v1";
 const KEY_PROJECTS = "@grille/projects_v2";
 

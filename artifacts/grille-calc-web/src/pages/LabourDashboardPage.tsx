@@ -1,16 +1,40 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
-import { HardHat, LogOut, Calendar, Briefcase, IndianRupee, Loader2 } from "lucide-react";
+import { HardHat, LogOut, Calendar, Briefcase, IndianRupee, Loader2, MapPin } from "lucide-react";
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, type ProjectStatus } from "@/lib/storage";
+
+interface Project {
+  id: string;
+  name: string;
+  clientName: string;
+  siteLocation: string;
+  notes: string;
+  status: ProjectStatus;
+}
 
 export default function LabourDashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
 
   useEffect(() => {
     if (!user) { navigate("/login", { replace: true }); return; }
-    if (user.role !== "labour_contractor") { navigate("/login", { replace: true }); }
+    if (user.role !== "labour_contractor") { navigate("/login", { replace: true }); return; }
+    void fetchProjects();
   }, [user, navigate]);
+
+  async function fetchProjects() {
+    setLoadingProjects(true);
+    try {
+      const resp = await fetch("/api/projects", { credentials: "include" });
+      const data = (await resp.json()) as { success: boolean; projects: Project[] };
+      if (data.success) setProjects(data.projects);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }
 
   if (!user) {
     return (
@@ -23,6 +47,10 @@ export default function LabourDashboardPage() {
   const today = new Date();
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const currentDay = today.getDay();
+
+  const assignedProjects = projects.filter((p) => p.status === "assigned");
+  const activeProjects = projects.filter((p) => p.status === "in_progress");
+  const completedProjects = projects.filter((p) => p.status === "completed" || p.status === "billed");
 
   return (
     <div className="min-h-screen bg-background max-w-xl mx-auto">
@@ -96,21 +124,61 @@ export default function LabourDashboardPage() {
         <div className="bg-white border border-border rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Briefcase size={16} className="text-[#1e3a8a]" />
-            <h2 className="font-bold text-sm">Assigned Projects</h2>
+            <h2 className="font-bold text-sm">Active Projects</h2>
+            <span className="ml-auto text-xs text-muted-foreground">{activeProjects.length + assignedProjects.length} total</span>
           </div>
-          <div className="text-center py-8 text-muted-foreground">
-            <Briefcase size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm font-medium">No projects assigned</p>
-            <p className="text-xs mt-1">Projects will appear here once assigned by admin.</p>
-          </div>
+
+          {loadingProjects ? (
+            <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-[#1e3a8a]" /></div>
+          ) : assignedProjects.length === 0 && activeProjects.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Briefcase size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm font-medium">No active projects</p>
+              <p className="text-xs mt-1">Projects will appear here once assigned by admin.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {[...activeProjects, ...assignedProjects].map((p) => (
+                <div key={p.id} className="border border-border rounded-xl px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-sm text-foreground truncate">{p.name}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${PROJECT_STATUS_COLORS[p.status]}`}>
+                      {PROJECT_STATUS_LABELS[p.status]}
+                    </span>
+                  </div>
+                  {(p.clientName || p.siteLocation) && (
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1 flex-wrap">
+                      {p.clientName && <span>{p.clientName}</span>}
+                      {p.siteLocation && <span className="flex items-center gap-0.5"><MapPin size={10} />{p.siteLocation}</span>}
+                    </div>
+                  )}
+                  {p.notes && <p className="text-xs text-muted-foreground mt-1">{p.notes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="bg-white border border-border rounded-2xl p-4">
-          <h2 className="font-bold text-sm mb-3">Completed Projects</h2>
-          <div className="text-center py-6 text-muted-foreground">
-            <p className="text-xs">Finished project details will appear here.</p>
+        {completedProjects.length > 0 && (
+          <div className="bg-white border border-border rounded-2xl p-4">
+            <h2 className="font-bold text-sm mb-3">Completed Projects</h2>
+            <div className="space-y-2">
+              {completedProjects.map((p) => (
+                <div key={p.id} className="border border-border rounded-xl px-3 py-2.5 bg-muted/40">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-sm text-foreground truncate">{p.name}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${PROJECT_STATUS_COLORS[p.status]}`}>
+                      {PROJECT_STATUS_LABELS[p.status]}
+                    </span>
+                  </div>
+                  {p.siteLocation && (
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-0.5"><MapPin size={10} />{p.siteLocation}</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
