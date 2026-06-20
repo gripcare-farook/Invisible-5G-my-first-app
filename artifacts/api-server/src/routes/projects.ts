@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { db, projectsTable, PROJECT_STATUSES } from "@workspace/db";
+import { db, projectsTable, PROJECT_STATUSES, PROJECT_STATUS_LABELS } from "@workspace/db";
 import { eq, desc, or } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { logActivity } from "../lib/activity";
 
 const router: IRouter = Router();
 
@@ -41,6 +42,16 @@ router.post("/projects", requireAdmin, async (req, res) => {
     .insert(projectsTable)
     .values({ id, name: name.trim(), clientName, siteLocation, notes, status: status as any })
     .returning();
+
+  void logActivity(db, {
+    actorId: req.session.userId!,
+    actorName: req.session.userName!,
+    actorRole: req.session.userRole!,
+    action: "project.created",
+    projectId: id,
+    message: `${req.session.userName} created project "${name.trim()}"`,
+  });
+
   res.json({ success: true, project });
 });
 
@@ -78,12 +89,38 @@ router.patch("/projects/:id", requireAdmin, async (req, res) => {
     res.status(404).json({ success: false, error: "project not found" });
     return;
   }
+
+  if (status !== undefined) {
+    const label = PROJECT_STATUS_LABELS[status as keyof typeof PROJECT_STATUS_LABELS] ?? status;
+    void logActivity(db, {
+      actorId: req.session.userId!,
+      actorName: req.session.userName!,
+      actorRole: req.session.userRole!,
+      action: "project.status_changed",
+      projectId: id,
+      message: `${req.session.userName} changed "${updated.name}" status to ${label}`,
+    });
+  }
+
   res.json({ success: true, project: updated });
 });
 
 router.delete("/projects/:id", requireAdmin, async (req, res) => {
   const id = String(req.params["id"]);
+  const [existing] = await db.select({ name: projectsTable.name }).from(projectsTable).where(eq(projectsTable.id, id)).limit(1);
   await db.delete(projectsTable).where(eq(projectsTable.id, id));
+
+  if (existing) {
+    void logActivity(db, {
+      actorId: req.session.userId!,
+      actorName: req.session.userName!,
+      actorRole: req.session.userRole!,
+      action: "project.deleted",
+      projectId: id,
+      message: `${req.session.userName} deleted project "${existing.name}"`,
+    });
+  }
+
   res.json({ success: true });
 });
 

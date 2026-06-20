@@ -3,6 +3,7 @@ import { db, transportRoutesTable, transportDeliveriesTable, transportLedgerTabl
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { requireAdmin, requireAuth } from "../middlewares/auth";
+import { logActivity } from "../lib/activity";
 
 const router: IRouter = Router();
 
@@ -100,6 +101,23 @@ router.post("/transport/sync", requireAdmin, async (req, res) => {
       await db.insert(transportLedgerTable).values({ id: "led_" + transport.routeId, routeId: transport.routeId, ...ledgerValues });
     }
 
+    if (transport.assignedDriverId) {
+      const [driver] = await db
+        .select({ name: usersTable.name })
+        .from(usersTable)
+        .where(eq(usersTable.id, transport.assignedDriverId))
+        .limit(1);
+      const driverName = driver?.name ?? `Driver #${transport.assignedDriverId}`;
+      void logActivity(db, {
+        actorId: req.session.userId!,
+        actorName: req.session.userName!,
+        actorRole: req.session.userRole!,
+        action: "transport.assigned",
+        projectId,
+        message: `${req.session.userName} assigned transport for "${projectName}" to ${driverName}`,
+      });
+    }
+
     logger.info({ routeId: transport.routeId, projectId }, "transport/sync: complete");
     res.json({ success: true, message: "Transport saved." });
   } catch (err) {
@@ -125,7 +143,7 @@ router.get("/transport/my-routes", requireAuth, async (req, res) => {
     ? await db.select().from(transportDeliveriesTable).where(
         routeIds.length === 1
           ? eq(transportDeliveriesTable.routeId, routeIds[0]!)
-          : eq(transportDeliveriesTable.routeId, routeIds[0]!) // will be fixed below
+          : eq(transportDeliveriesTable.routeId, routeIds[0]!)
       )
     : [];
 
@@ -188,6 +206,17 @@ router.patch("/transport/deliveries/:id/status", requireAuth, async (req, res) =
     updatedAt: new Date(),
   }).where(eq(transportDeliveriesTable.id, id));
 
+  const d = delivery[0]!;
+  const locationLabel = d.locationName || `Stop ${d.stopOrder}`;
+  void logActivity(db, {
+    actorId: userId,
+    actorName: req.session.userName!,
+    actorRole: userRole,
+    action: "transport.delivery_updated",
+    projectId: d.projectId,
+    message: `${req.session.userName} marked delivery at "${locationLabel}" as ${status}`,
+  });
+
   logger.info({ deliveryId: id, status, userId }, "transport: delivery status updated");
   res.json({ success: true });
 });
@@ -233,6 +262,15 @@ router.post("/transport/routes/:id/complete", requireAuth, async (req, res) => {
     balancePayable: String(newBalance),
     updatedAt: new Date(),
   }).where(eq(transportLedgerTable.routeId, id));
+
+  void logActivity(db, {
+    actorId: userId,
+    actorName: req.session.userName!,
+    actorRole: userRole,
+    action: "transport.route_completed",
+    projectId: r.projectId,
+    message: `${req.session.userName} completed route for "${r.projectName}"`,
+  });
 
   logger.info({ routeId: id, actualKm, userId }, "transport: route completed");
   res.json({ success: true, message: "Route marked as completed." });

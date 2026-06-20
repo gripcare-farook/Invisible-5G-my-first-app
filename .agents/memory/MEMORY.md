@@ -1,3 +1,4 @@
 - [Transport module architecture](transport-module.md) — auth via express-session+bcryptjs; users seeded at startup from env vars; Metro blockList fix required for Expo+react-router coexistence.
 - [Drizzle + Express 5 param typing](drizzle-express5-params.md) — req.params values must be cast to String() before passing to drizzle eq() to avoid TS2769 overload errors.
 - [Role-based auth expansion](role-based-auth.md) — adding new roles requires rebuilding @workspace/db lib (tsc --build) before leaf package typechecks; mobile numbers used as usernames in email column; render-time navigate() in React must be in useEffect.
+- [Drizzle db type](drizzle-db-type.md) — API server uses NodePgDatabase (node-postgres), not PostgresJsDatabase; use NodePgDatabase<any> in helper params or get TS2345.

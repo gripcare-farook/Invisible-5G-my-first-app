@@ -7,6 +7,7 @@ import adminRouter from "./admin";
 import leadsRouter from "./leads";
 import notificationsRouter from "./notifications";
 import projectsRouter from "./projects";
+import activityRouter from "./activity";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(adminRouter);
 router.use(leadsRouter);
 router.use(notificationsRouter);
 router.use(projectsRouter);
+router.use(activityRouter);
 
 export default router;

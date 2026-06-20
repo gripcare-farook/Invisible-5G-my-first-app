@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   Calculator, Truck, LogOut, Plus, Trash2, ChevronDown, ChevronUp,
   Phone, MapPin, Loader2, Bell, Users, TrendingUp, UserCheck, Briefcase,
+  Clock, FolderKanban, RefreshCw,
 } from "lucide-react";
 import {
   PROJECT_STATUSES, PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS,
@@ -40,6 +41,17 @@ interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+interface ActivityLog {
+  id: number;
+  actorId: number;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  projectId: string | null;
+  message: string;
+  createdAt: string;
 }
 
 const LEAD_STATUS_COLORS: Record<string, string> = {
@@ -439,7 +451,9 @@ export default function AdminDashboardPage() {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [leadFilter, setLeadFilter] = useState<"all" | Lead["status"]>("all");
   const [projectFilter, setProjectFilter] = useState<"all" | ProjectStatus>("all");
-  const [activeTab, setActiveTab] = useState<"projects" | "leads">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "leads" | "activity">("projects");
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate("/login", { replace: true }); return; }
@@ -482,6 +496,17 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function fetchActivity() {
+    setLoadingActivity(true);
+    try {
+      const resp = await fetch("/api/activity", { credentials: "include" });
+      const data = (await resp.json()) as { success: boolean; logs: ActivityLog[] };
+      if (data.success) setActivityLogs(data.logs);
+    } finally {
+      setLoadingActivity(false);
+    }
+  }
+
   function handleLeadAdded(lead: Lead) { setLeads((prev) => [lead, ...prev]); setShowAddLead(false); }
   function handleLeadUpdated(id: number, patch: Partial<Lead>) {
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -508,7 +533,7 @@ export default function AdminDashboardPage() {
 
   if (!user) return null;
 
-  const tabCls = (t: "projects" | "leads") =>
+  const tabCls = (t: "projects" | "leads" | "activity") =>
     `flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors ${activeTab === t ? "bg-[#1e3a8a] text-white" : "text-muted-foreground hover:text-foreground"}`;
 
   return (
@@ -555,7 +580,7 @@ export default function AdminDashboardPage() {
           {[
             { icon: <Truck size={16} />, label: "Transport", path: "/transport" },
             { icon: <Users size={16} />, label: "Calculator", path: "/calculator" },
-            { icon: <TrendingUp size={16} />, label: "Refresh", action: () => { void fetchStats(); void fetchLeads(); void fetchProjects(); } },
+            { icon: <RefreshCw size={16} />, label: "Refresh", action: () => { void fetchStats(); void fetchLeads(); void fetchProjects(); void fetchActivity(); } },
           ].map((item) => (
             <button
               key={item.label}
@@ -577,6 +602,12 @@ export default function AdminDashboardPage() {
             {openLeads.length > 0 && (
               <span className="ml-1.5 text-xs bg-orange-400 text-white font-bold px-1.5 py-0.5 rounded-full">{openLeads.length}</span>
             )}
+          </button>
+          <button
+            onClick={() => { setActiveTab("activity"); if (activityLogs.length === 0) void fetchActivity(); }}
+            className={tabCls("activity")}
+          >
+            <Clock size={14} className="inline mr-1" />Log
           </button>
         </div>
 
@@ -632,6 +663,84 @@ export default function AdminDashboardPage() {
                     onDelete={handleProjectDeleted}
                   />
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "activity" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Clock size={16} className="text-[#1e3a8a]" />
+                Activity Log
+              </h2>
+              <button
+                onClick={() => void fetchActivity()}
+                className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-lg px-2.5 py-1.5 hover:border-[#1e3a8a]/40 hover:text-[#1e3a8a] transition-colors"
+              >
+                <RefreshCw size={12} /> Refresh
+              </button>
+            </div>
+
+            {loadingActivity ? (
+              <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#1e3a8a]" /></div>
+            ) : activityLogs.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <FolderKanban size={32} className="mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-medium">No activity yet</p>
+                <p className="text-xs mt-1">Actions on projects and transport will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activityLogs.map((log) => {
+                  const isProject = log.action.startsWith("project.");
+                  const isTransport = log.action.startsWith("transport.");
+                  const dotColor = isProject
+                    ? "bg-green-500"
+                    : isTransport
+                    ? "bg-orange-400"
+                    : "bg-blue-400";
+                  const roleBadgeColor: Record<string, string> = {
+                    admin: "bg-[#1e3a8a]/10 text-[#1e3a8a]",
+                    transport: "bg-orange-100 text-orange-700",
+                    labour_contractor: "bg-purple-100 text-purple-700",
+                    labour_worker: "bg-green-100 text-green-700",
+                  };
+                  const roleLabel: Record<string, string> = {
+                    admin: "Admin",
+                    transport: "Transport",
+                    labour_contractor: "Contractor",
+                    labour_worker: "Worker",
+                  };
+                  const elapsed = (() => {
+                    const diff = Date.now() - new Date(log.createdAt).getTime();
+                    const m = Math.floor(diff / 60000);
+                    if (m < 1) return "just now";
+                    if (m < 60) return `${m}m ago`;
+                    const h = Math.floor(m / 60);
+                    if (h < 24) return `${h}h ago`;
+                    return `${Math.floor(h / 24)}d ago`;
+                  })();
+
+                  return (
+                    <div key={log.id} className="bg-white border border-border rounded-xl px-4 py-3 flex gap-3">
+                      <div className="mt-1.5 shrink-0">
+                        <span className={`block w-2.5 h-2.5 rounded-full ${dotColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                          <span className="text-xs font-semibold text-foreground">{log.actorName}</span>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${roleBadgeColor[log.actorRole] ?? "bg-gray-100 text-gray-600"}`}>
+                            {roleLabel[log.actorRole] ?? log.actorRole}
+                          </span>
+                          <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{elapsed}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{log.message}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
