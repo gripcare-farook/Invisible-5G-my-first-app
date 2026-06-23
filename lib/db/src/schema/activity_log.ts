@@ -3,6 +3,7 @@ import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 export const ACTIVITY_ACTIONS = [
   "project.created",
   "project.status_changed",
+  "project.payment_updated",
   "project.deleted",
   "lead.created",
   "transport.assigned",

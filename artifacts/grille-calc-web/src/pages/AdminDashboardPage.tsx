@@ -40,6 +40,13 @@ interface Project {
   siteLocation: string;
   notes: string;
   status: ProjectStatus;
+  totalAmount: string;
+  advanceAmount: string;
+  receivedAmount: string;
+  balanceAmount: string;
+  paymentStatus: PaymentStatus;
+  receivedDate: string | null;
+  paymentNotes: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,6 +90,20 @@ const EMPTY_PROJECT = {
   name: "", clientName: "", clientMobile: "", siteLocation: "", notes: "", status: "new" as ProjectStatus,
 };
 
+type PaymentStatus = "unpaid" | "partial" | "paid";
+
+const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  unpaid: "Unpaid",
+  partial: "Partial",
+  paid: "Paid",
+};
+
+const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  unpaid: "bg-red-100 text-red-700",
+  partial: "bg-yellow-100 text-yellow-800",
+  paid: "bg-green-100 text-green-800",
+};
+
 async function readApiError(resp: Response, fallback: string): Promise<string> {
   try {
     const data = (await resp.json()) as { success?: boolean; error?: string; message?: string };
@@ -96,10 +117,31 @@ function cleanMobile(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+function moneyValue(value: string | number | null | undefined): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function fmtMoney(value: string | number | null | undefined): string {
+  return `Rs. ${moneyValue(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function dateInputValue(value: string | null): string {
+  return value ? value.slice(0, 10) : "";
+}
+
 function StatusBadge({ status }: { status: ProjectStatus }) {
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${PROJECT_STATUS_COLORS[status]}`}>
       {PROJECT_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function PaymentBadge({ status }: { status: PaymentStatus }) {
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${PAYMENT_STATUS_COLORS[status]}`}>
+      {PAYMENT_STATUS_LABELS[status]}
     </span>
   );
 }
@@ -116,15 +158,34 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
 
 function ProjectCard({
   project,
-  onStatusChange,
+  onUpdate,
   onDelete,
 }: {
   project: Project;
-  onStatusChange: (id: string, status: ProjectStatus) => void;
+  onUpdate: (id: string, patch: Partial<Project>) => void;
   onDelete: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const [paymentForm, setPaymentForm] = useState({
+    totalAmount: project.totalAmount ?? "0",
+    advanceAmount: project.advanceAmount ?? "0",
+    receivedAmount: project.receivedAmount ?? "0",
+    receivedDate: dateInputValue(project.receivedDate),
+    paymentNotes: project.paymentNotes ?? "",
+  });
+
+  useEffect(() => {
+    setPaymentForm({
+      totalAmount: project.totalAmount ?? "0",
+      advanceAmount: project.advanceAmount ?? "0",
+      receivedAmount: project.receivedAmount ?? "0",
+      receivedDate: dateInputValue(project.receivedDate),
+      paymentNotes: project.paymentNotes ?? "",
+    });
+  }, [project]);
 
   async function updateStatus(newStatus: ProjectStatus) {
     setSaving(true);
@@ -135,7 +196,55 @@ function ProjectCard({
       body: JSON.stringify({ status: newStatus }),
     });
     setSaving(false);
-    if (resp.ok) onStatusChange(project.id, newStatus);
+    if (resp.ok) {
+      const data = (await resp.json()) as { success: boolean; project?: Project };
+      onUpdate(project.id, data.project ?? { status: newStatus });
+    }
+  }
+
+  function setPayment(key: keyof typeof paymentForm, value: string) {
+    setPaymentForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function savePayment(e: FormEvent) {
+    e.preventDefault();
+    const totalAmount = moneyValue(paymentForm.totalAmount);
+    const advanceAmount = moneyValue(paymentForm.advanceAmount);
+    const receivedAmount = moneyValue(paymentForm.receivedAmount);
+    if (totalAmount < 0 || advanceAmount < 0 || receivedAmount < 0) {
+      setPaymentError("Amounts cannot be negative.");
+      return;
+    }
+    if (receivedAmount > totalAmount) {
+      setPaymentError("Received amount cannot exceed total amount.");
+      return;
+    }
+
+    setPaymentSaving(true);
+    setPaymentError("");
+    const resp = await fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        totalAmount,
+        advanceAmount,
+        receivedAmount,
+        receivedDate: paymentForm.receivedDate,
+        paymentNotes: paymentForm.paymentNotes,
+      }),
+    });
+    setPaymentSaving(false);
+    if (!resp.ok) {
+      setPaymentError(await readApiError(resp, "Unable to update payment."));
+      return;
+    }
+    const data = (await resp.json()) as { success: boolean; project?: Project; error?: string; message?: string };
+    if (data.success && data.project) {
+      onUpdate(project.id, data.project);
+    } else {
+      setPaymentError(data.error || data.message || "Unable to update payment.");
+    }
   }
 
   async function handleDelete() {
@@ -155,6 +264,7 @@ function ProjectCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm text-foreground truncate">{project.name}</span>
             <StatusBadge status={project.status} />
+            <PaymentBadge status={project.paymentStatus} />
           </div>
           {(project.clientName || project.clientMobile || project.siteLocation) && (
             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
@@ -163,6 +273,10 @@ function ProjectCard({
               {project.siteLocation && <span className="flex items-center gap-1"><MapPin size={11} />{project.siteLocation}</span>}
             </div>
           )}
+          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+            <span>Received {fmtMoney(project.receivedAmount)}</span>
+            <span>Pending {fmtMoney(project.balanceAmount)}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 ml-2 shrink-0">
           {saving && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
@@ -190,6 +304,45 @@ function ProjectCard({
               ))}
             </select>
           </div>
+
+          <form onSubmit={savePayment} className="border border-border rounded-xl p-3 space-y-3 bg-muted/30">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-sm text-foreground">Payment Details</h3>
+              <PaymentBadge status={project.paymentStatus} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Total Amount</label>
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.totalAmount} onChange={(e) => setPayment("totalAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Advance Amount</label>
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.advanceAmount} onChange={(e) => setPayment("advanceAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Received Amount</label>
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.receivedAmount} onChange={(e) => setPayment("receivedAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Balance</label>
+                <div className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white text-muted-foreground">
+                  {fmtMoney(Math.max(0, moneyValue(paymentForm.totalAmount) - moneyValue(paymentForm.receivedAmount)))}
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Received Date</label>
+                <input type="date" value={paymentForm.receivedDate} onChange={(e) => setPayment("receivedDate", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Payment Notes</label>
+                <textarea value={paymentForm.paymentNotes} onChange={(e) => setPayment("paymentNotes", e.target.value)} rows={2} placeholder="UPI, cash, bank transfer, pending reason..." className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40 resize-none" />
+              </div>
+            </div>
+            {paymentError && <div className="text-sm text-red-600">{paymentError}</div>}
+            <button type="submit" disabled={paymentSaving} className="w-full flex items-center justify-center gap-1.5 bg-[#1e3a8a] text-white font-semibold rounded-xl py-2.5 text-sm hover:bg-[#1e3a8a]/90 disabled:opacity-50">
+              {paymentSaving ? <Loader2 size={14} className="animate-spin" /> : null} Save Payment
+            </button>
+          </form>
 
           <button
             type="button"
@@ -557,8 +710,8 @@ export default function AdminDashboardPage() {
   }
 
   function handleProjectAdded(project: Project) { setProjects((prev) => [project, ...prev]); setShowAddProject(false); }
-  function handleProjectStatusChange(id: string, status: ProjectStatus) {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+  function handleProjectUpdated(id: string, patch: Partial<Project>) {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
   function handleProjectDeleted(id: string) { setProjects((prev) => prev.filter((p) => p.id !== id)); }
 
@@ -570,6 +723,8 @@ export default function AdminDashboardPage() {
     acc[s] = projects.filter((p) => p.status === s).length;
     return acc;
   }, {});
+  const totalReceivedAmount = projects.reduce((sum, p) => sum + moneyValue(p.receivedAmount), 0);
+  const totalPendingAmount = projects.reduce((sum, p) => sum + moneyValue(p.balanceAmount), 0);
 
   if (!user) return null;
 
@@ -615,6 +770,11 @@ export default function AdminDashboardPage() {
             <StatCard label="Converted" value={stats.leads.converted} sub="leads" color="bg-green-600" />
           </div>
         ) : null}
+
+        <div className="grid grid-cols-2 gap-2">
+          <StatCard label="Total Received" value={fmtMoney(totalReceivedAmount)} sub="project payments" color="bg-green-600" />
+          <StatCard label="Total Pending" value={fmtMoney(totalPendingAmount)} sub="balance due" color="bg-orange-500" />
+        </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs">
           {[
@@ -699,7 +859,7 @@ export default function AdminDashboardPage() {
                   <ProjectCard
                     key={project.id}
                     project={project}
-                    onStatusChange={handleProjectStatusChange}
+                    onUpdate={handleProjectUpdated}
                     onDelete={handleProjectDeleted}
                   />
                 ))}
