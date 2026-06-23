@@ -3,8 +3,14 @@ import { db, leadFollowupsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { logActivity } from "../lib/activity";
 
 const router: IRouter = Router();
+const LEAD_STATUSES = ["new", "contacted", "interested", "not_interested", "converted", "lost"] as const;
+
+function cleanMobile(value: unknown): string {
+  return String(value ?? "").replace(/\D/g, "");
+}
 
 router.get("/leads", requireAdmin, async (_req, res) => {
   const leads = await db
@@ -31,25 +37,50 @@ router.post("/leads", requireAdmin, async (req, res) => {
     res.status(400).json({ success: false, message: "Name is required." });
     return;
   }
+  const phone = cleanMobile(body.phone);
+  if (!phone) {
+    res.status(400).json({ success: false, message: "Mobile number is required." });
+    return;
+  }
+  if (phone.length !== 10) {
+    res.status(400).json({ success: false, message: "Mobile number must be 10 digits." });
+    return;
+  }
+  if (body.status && !LEAD_STATUSES.includes(body.status)) {
+    res.status(400).json({ success: false, message: "Invalid lead status." });
+    return;
+  }
 
-  const [lead] = await db
-    .insert(leadFollowupsTable)
-    .values({
-      name: body.name.trim(),
-      phone: body.phone ?? "",
-      location: body.location ?? "",
-      requirement: body.requirement ?? "",
-      source: body.source ?? "",
-      followUpDate: body.followUpDate ?? null,
-      status: body.status ?? "new",
-      notes: body.notes ?? "",
-      nextAction: body.nextAction ?? "",
-      createdBy: req.session.userId,
-    })
-    .returning();
+  try {
+    const [lead] = await db
+      .insert(leadFollowupsTable)
+      .values({
+        name: body.name.trim(),
+        phone,
+        location: body.location?.trim() ?? "",
+        requirement: body.requirement?.trim() ?? "",
+        source: body.source?.trim() ?? "",
+        followUpDate: body.followUpDate ?? null,
+        status: body.status ?? "new",
+        notes: body.notes?.trim() ?? "",
+        nextAction: body.nextAction?.trim() ?? "",
+        createdBy: req.session.userId,
+      })
+      .returning();
 
-  logger.info({ leadId: lead!.id }, "lead: created");
-  res.json({ success: true, lead });
+    logger.info({ leadId: lead!.id }, "lead: created");
+    void logActivity(db, {
+      actorId: req.session.userId!,
+      actorName: req.session.userName!,
+      actorRole: req.session.userRole!,
+      action: "lead.created",
+      message: `${req.session.userName} created lead "${body.name.trim()}"`,
+    });
+    res.json({ success: true, lead });
+  } catch (err) {
+    logger.error({ err }, "lead: create failed");
+    res.status(500).json({ success: false, message: "Unable to save lead. Please check the lead details and try again." });
+  }
 });
 
 router.patch("/leads/:id", requireAdmin, async (req, res) => {

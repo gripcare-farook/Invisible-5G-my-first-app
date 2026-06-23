@@ -15,6 +15,7 @@ export const projectsTable = pgTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   clientName: text("client_name").notNull().default(""),
+  clientMobile: text("client_mobile").notNull().default(""),
   siteLocation: text("site_location").notNull().default(""),
   notes: text("notes").notNull().default(""),
   status: text("status", { enum: PROJECT_STATUSES }).notNull().default("new"),

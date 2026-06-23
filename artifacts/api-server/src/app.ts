@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { seedUsers } from "./lib/seed";
+import { ensureDatabaseSchema } from "./lib/schema";
 import "./types/session.d";
 
 const app: Express = express();
@@ -68,8 +69,10 @@ if (process.env["NODE_ENV"] === "production") {
   });
 }
 
-seedUsers().catch((err) => {
-  logger.warn({ err: err instanceof Error ? err.message : String(err) }, "seed: skipped (DB may not be ready)");
-});
+ensureDatabaseSchema()
+  .then(() => seedUsers())
+  .catch((err) => {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, "startup db setup skipped");
+  });
 
 export default app;

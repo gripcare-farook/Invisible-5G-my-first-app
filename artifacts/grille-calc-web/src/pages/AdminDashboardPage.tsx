@@ -36,6 +36,7 @@ interface Project {
   id: string;
   name: string;
   clientName: string;
+  clientMobile: string;
   siteLocation: string;
   notes: string;
   status: ProjectStatus;
@@ -79,8 +80,21 @@ const EMPTY_LEAD = {
 };
 
 const EMPTY_PROJECT = {
-  name: "", clientName: "", siteLocation: "", notes: "", status: "new" as ProjectStatus,
+  name: "", clientName: "", clientMobile: "", siteLocation: "", notes: "", status: "new" as ProjectStatus,
 };
+
+async function readApiError(resp: Response, fallback: string): Promise<string> {
+  try {
+    const data = (await resp.json()) as { success?: boolean; error?: string; message?: string };
+    return data.error || data.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function cleanMobile(value: string): string {
+  return value.replace(/\D/g, "");
+}
 
 function StatusBadge({ status }: { status: ProjectStatus }) {
   return (
@@ -142,9 +156,10 @@ function ProjectCard({
             <span className="font-semibold text-sm text-foreground truncate">{project.name}</span>
             <StatusBadge status={project.status} />
           </div>
-          {(project.clientName || project.siteLocation) && (
+          {(project.clientName || project.clientMobile || project.siteLocation) && (
             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
-              {project.clientName && <span className="flex items-center gap-1"><Phone size={11} />{project.clientName}</span>}
+              {project.clientName && <span>{project.clientName}</span>}
+              {project.clientMobile && <span className="flex items-center gap-1"><Phone size={11} />{project.clientMobile}</span>}
               {project.siteLocation && <span className="flex items-center gap-1"><MapPin size={11} />{project.siteLocation}</span>}
             </div>
           )}
@@ -207,20 +222,27 @@ function AddProjectForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) { setError("Project name is required."); return; }
+    const mobile = cleanMobile(form.clientMobile);
+    if (mobile && mobile.length !== 10) { setError("Client mobile number must be 10 digits."); return; }
     setSaving(true);
     setError("");
     const resp = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, clientMobile: mobile }),
     });
-    const data = (await resp.json()) as { success: boolean; project?: Project };
+    if (!resp.ok) {
+      setError(await readApiError(resp, "Unable to save project. Please try again."));
+      setSaving(false);
+      return;
+    }
+    const data = (await resp.json()) as { success: boolean; project?: Project; error?: string; message?: string };
     setSaving(false);
     if (data.success && data.project) {
       onSave(data.project);
     } else {
-      setError("Failed to save project.");
+      setError(data.error || data.message || "Unable to save project. Please try again.");
     }
   }
 
@@ -234,15 +256,17 @@ function AddProjectForm({
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Project Name *</label>
           <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Ramesh Balcony Grille" className={inp} required />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Client Name</label>
-            <input type="text" value={form.clientName} onChange={(e) => set("clientName", e.target.value)} placeholder="Client name" className={inp} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Site Location</label>
-            <input type="text" value={form.siteLocation} onChange={(e) => set("siteLocation", e.target.value)} placeholder="Area / address" className={inp} />
-          </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Client Name</label>
+          <input type="text" value={form.clientName} onChange={(e) => set("clientName", e.target.value)} placeholder="Client name" className={inp} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Client Mobile Number</label>
+          <input type="tel" inputMode="numeric" maxLength={10} value={form.clientMobile} onChange={(e) => set("clientMobile", cleanMobile(e.target.value).slice(0, 10))} placeholder="10 digit mobile number" className={inp} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Site Location</label>
+          <input type="text" value={form.siteLocation} onChange={(e) => set("siteLocation", e.target.value)} placeholder="Area / address" className={inp} />
         </div>
         <div>
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Initial Status</label>
@@ -369,20 +393,28 @@ function AddLeadForm({ onSave, onCancel }: { onSave: (lead: Lead) => void; onCan
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) { setError("Name is required."); return; }
+    const mobile = cleanMobile(form.phone);
+    if (!mobile) { setError("Mobile number is required."); return; }
+    if (mobile.length !== 10) { setError("Mobile number must be 10 digits."); return; }
     setSaving(true);
     setError("");
     const resp = await fetch("/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, phone: mobile }),
     });
-    const data = (await resp.json()) as { success: boolean; lead?: Lead };
+    if (!resp.ok) {
+      setError(await readApiError(resp, "Unable to save lead. Please try again."));
+      setSaving(false);
+      return;
+    }
+    const data = (await resp.json()) as { success: boolean; lead?: Lead; error?: string; message?: string };
     setSaving(false);
     if (data.success && data.lead) {
       onSave(data.lead);
     } else {
-      setError("Failed to save lead.");
+      setError(data.error || data.message || "Unable to save lead. Please try again.");
     }
   }
 
@@ -391,36 +423,44 @@ function AddLeadForm({ onSave, onCancel }: { onSave: (lead: Lead) => void; onCan
   return (
     <form onSubmit={handleSubmit} className="bg-[#1e3a8a]/5 border border-[#1e3a8a]/20 rounded-2xl p-4 space-y-3">
       <h3 className="font-semibold text-sm text-[#1e3a8a]">New Lead</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="col-span-2">
-          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Name *</label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Customer Name *</label>
           <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Client name" className={input} required />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Phone</label>
-          <input type="text" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Mobile" className={input} />
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Mobile Number *</label>
+          <input type="tel" inputMode="numeric" maxLength={10} value={form.phone} onChange={(e) => set("phone", cleanMobile(e.target.value).slice(0, 10))} placeholder="10 digit mobile number" className={input} required />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Status</label>
+          <select value={form.status} onChange={(e) => set("status", e.target.value)} className={input}>
+            {Object.entries(LEAD_STATUS_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Site Location</label>
+          <input type="text" value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Area / address" className={input} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Requirement</label>
+          <input type="text" value={form.requirement} onChange={(e) => set("requirement", e.target.value)} placeholder="Balcony, window…" className={input} />
         </div>
         <div>
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Follow-up Date</label>
           <input type="date" value={form.followUpDate} onChange={(e) => set("followUpDate", e.target.value)} className={input} />
         </div>
-        <div className="col-span-2">
-          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Location</label>
-          <input type="text" value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Area / address" className={input} />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Requirement</label>
-          <input type="text" value={form.requirement} onChange={(e) => set("requirement", e.target.value)} placeholder="Balcony, window…" className={input} />
-        </div>
         <div>
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Source</label>
           <input type="text" value={form.source} onChange={(e) => set("source", e.target.value)} placeholder="WhatsApp, referral…" className={input} />
         </div>
-        <div className="col-span-2">
-          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</label>
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Requirement / Notes</label>
           <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} placeholder="Any notes…" className={`${input} resize-none`} />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Next Action</label>
           <input type="text" value={form.nextAction} onChange={(e) => set("nextAction", e.target.value)} placeholder="Call tomorrow, send quote…" className={input} />
         </div>

@@ -4,6 +4,7 @@ export const ACTIVITY_ACTIONS = [
   "project.created",
   "project.status_changed",
   "project.deleted",
+  "lead.created",
   "transport.assigned",
   "transport.delivery_updated",
   "transport.route_completed",

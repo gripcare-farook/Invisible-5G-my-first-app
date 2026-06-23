@@ -3,8 +3,14 @@ import { db, projectsTable, PROJECT_STATUSES, PROJECT_STATUS_LABELS } from "@wor
 import { eq, desc, or } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logActivity } from "../lib/activity";
+import { logger } from "../lib/logger";
+import { ensureDatabaseSchema } from "../lib/schema";
 
 const router: IRouter = Router();
+
+function cleanMobile(value: unknown): string {
+  return String(value ?? "").replace(/\D/g, "");
+}
 
 router.get("/projects", requireAuth, async (req, res) => {
   const role = req.session.userRole;
@@ -22,9 +28,10 @@ router.get("/projects", requireAuth, async (req, res) => {
 });
 
 router.post("/projects", requireAdmin, async (req, res) => {
-  const { name, clientName = "", siteLocation = "", notes = "", status = "new" } = req.body as {
+  const { name, clientName = "", clientMobile = "", siteLocation = "", notes = "", status = "new" } = req.body as {
     name?: string;
     clientName?: string;
+    clientMobile?: string;
     siteLocation?: string;
     notes?: string;
     status?: string;
@@ -37,30 +44,51 @@ router.post("/projects", requireAdmin, async (req, res) => {
     res.status(400).json({ success: false, error: "invalid status" });
     return;
   }
-  const id = Date.now().toString() + Math.random().toString(36).slice(2, 7);
-  const [project] = await db
-    .insert(projectsTable)
-    .values({ id, name: name.trim(), clientName, siteLocation, notes, status: status as any })
-    .returning();
+  const mobile = cleanMobile(clientMobile);
+  if (mobile && mobile.length !== 10) {
+    res.status(400).json({ success: false, error: "Client mobile number must be 10 digits." });
+    return;
+  }
 
-  void logActivity(db, {
-    actorId: req.session.userId!,
-    actorName: req.session.userName!,
-    actorRole: req.session.userRole!,
-    action: "project.created",
-    projectId: id,
-    message: `${req.session.userName} created project "${name.trim()}"`,
-  });
+  try {
+    await ensureDatabaseSchema();
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 7);
+    const [project] = await db
+      .insert(projectsTable)
+      .values({
+        id,
+        name: name.trim(),
+        clientName: clientName.trim(),
+        clientMobile: mobile,
+        siteLocation: siteLocation.trim(),
+        notes: notes.trim(),
+        status: status as any,
+      })
+      .returning();
 
-  res.json({ success: true, project });
+    void logActivity(db, {
+      actorId: req.session.userId!,
+      actorName: req.session.userName!,
+      actorRole: req.session.userRole!,
+      action: "project.created",
+      projectId: id,
+      message: `${req.session.userName} created project "${name.trim()}"`,
+    });
+
+    res.json({ success: true, project });
+  } catch (err) {
+    logger.error({ err }, "project: create failed");
+    res.status(500).json({ success: false, error: "Unable to save project. Please check the project details and try again." });
+  }
 });
 
 router.patch("/projects/:id", requireAdmin, async (req, res) => {
   const id = String(req.params["id"]);
-  const { status, name, clientName, siteLocation, notes } = req.body as {
+  const { status, name, clientName, clientMobile, siteLocation, notes } = req.body as {
     status?: string;
     name?: string;
     clientName?: string;
+    clientMobile?: string;
     siteLocation?: string;
     notes?: string;
   };
@@ -69,15 +97,23 @@ router.patch("/projects/:id", requireAdmin, async (req, res) => {
     res.status(400).json({ success: false, error: "invalid status" });
     return;
   }
+  if (clientMobile !== undefined) {
+    const mobile = cleanMobile(clientMobile);
+    if (mobile && mobile.length !== 10) {
+      res.status(400).json({ success: false, error: "Client mobile number must be 10 digits." });
+      return;
+    }
+  }
 
   const patch: Partial<typeof projectsTable.$inferInsert> = {
     updatedAt: new Date(),
   };
   if (status !== undefined) patch.status = status as any;
   if (name !== undefined) patch.name = name.trim();
-  if (clientName !== undefined) patch.clientName = clientName;
-  if (siteLocation !== undefined) patch.siteLocation = siteLocation;
-  if (notes !== undefined) patch.notes = notes;
+  if (clientName !== undefined) patch.clientName = clientName.trim();
+  if (clientMobile !== undefined) patch.clientMobile = cleanMobile(clientMobile);
+  if (siteLocation !== undefined) patch.siteLocation = siteLocation.trim();
+  if (notes !== undefined) patch.notes = notes.trim();
 
   const [updated] = await db
     .update(projectsTable)
