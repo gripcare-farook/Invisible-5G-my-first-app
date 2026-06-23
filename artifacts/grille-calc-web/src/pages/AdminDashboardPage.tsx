@@ -732,8 +732,8 @@ export default function AdminDashboardPage() {
     `flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors ${activeTab === t ? "bg-[#1e3a8a] text-white" : "text-muted-foreground hover:text-foreground"}`;
 
   return (
-    <div className="min-h-screen bg-background max-w-xl mx-auto">
-      <div className="bg-[#1e3a8a] text-white px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background w-full max-w-6xl mx-auto">
+      <div className="bg-[#1e3a8a] text-white px-4 py-4 lg:px-6 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">5G Grille Admin</h1>
           <p className="text-blue-200 text-xs">Welcome, {user.name}</p>
@@ -760,7 +760,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-5 pb-10">
+      <div className="px-4 py-4 lg:px-6 lg:py-6 space-y-5 pb-10">
         {loadingStats ? (
           <div className="flex justify-center py-6"><Loader2 size={24} className="animate-spin text-[#1e3a8a]" /></div>
         ) : stats ? (

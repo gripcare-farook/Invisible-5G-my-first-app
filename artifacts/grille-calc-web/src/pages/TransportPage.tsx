@@ -309,8 +309,8 @@ export default function TransportPage() {
   const today = new Date().toDateString();
 
   return (
-    <div className="min-h-screen bg-background max-w-xl mx-auto">
-      <div className="bg-[#1e3a8a] text-white px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background w-full max-w-5xl mx-auto">
+      <div className="bg-[#1e3a8a] text-white px-4 py-4 lg:px-6 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold flex items-center gap-2"><Truck size={20} /> Transport</h1>
           <p className="text-blue-200 text-xs">Welcome, {user.name}</p>
@@ -327,7 +327,7 @@ export default function TransportPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-4 pb-8">
+      <div className="px-4 py-4 lg:px-6 lg:py-6 space-y-4 pb-8">
         {error && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
             <AlertCircle size={16} className="shrink-0" />

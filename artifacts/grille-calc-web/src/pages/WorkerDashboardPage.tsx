@@ -48,8 +48,8 @@ export default function WorkerDashboardPage() {
   const assignedProjects = projects.filter((p) => p.status === "assigned");
 
   return (
-    <div className="min-h-screen bg-background max-w-xl mx-auto">
-      <div className="bg-[#1e3a8a] text-white px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background w-full max-w-5xl mx-auto">
+      <div className="bg-[#1e3a8a] text-white px-4 py-4 lg:px-6 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold flex items-center gap-2">
             <Wrench size={20} /> My Tasks
@@ -64,7 +64,7 @@ export default function WorkerDashboardPage() {
         </button>
       </div>
 
-      <div className="px-4 py-4 space-y-4 pb-10">
+      <div className="px-4 py-4 lg:px-6 lg:py-6 space-y-4 pb-10">
         <div className="bg-white border border-border rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <ClipboardList size={16} className="text-[#1e3a8a]" />
