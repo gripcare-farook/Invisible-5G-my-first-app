@@ -1,4 +1,5 @@
 import { useEffect, useState, FormEvent } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { QuotationPreview } from "@/components/QuotationPreview";
@@ -151,6 +152,97 @@ function quotationShareText(project: Project): string {
     `Contact: ${QUOTATION_COMPANY.mobile}`,
     `Email: ${QUOTATION_COMPANY.email}`,
   ].join("\n");
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[char]!);
+}
+
+function quotationPrintHtml(project: Project): string {
+  const quotation = renderToStaticMarkup(<QuotationPreview project={project} />);
+  const title = escapeHtml(`Quotation - ${project.name}`);
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <base href="${window.location.origin}/" />
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; color: #0f172a; font-family: Inter, Arial, sans-serif; }
+    #quotation-print-root { width: 100%; max-width: none; min-height: 0; margin: 0; padding: 4mm; background: #fff; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 2px solid #1e3a8a; padding-bottom: 20px; }
+    header > div:first-child { display: flex; align-items: flex-start; gap: 16px; }
+    img { width: 64px; height: 64px; object-fit: contain; }
+    h1 { margin: 0; color: #1e3a8a; font-size: 24px; line-height: 32px; font-weight: 700; }
+    h2 { margin: 0; color: #0f172a; font-size: 20px; line-height: 28px; font-weight: 700; text-transform: uppercase; letter-spacing: .025em; }
+    h3 { margin: 0 0 8px; color: #1e3a8a; font-size: 14px; line-height: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .025em; }
+    p { margin: 0; }
+    header p { color: #475569; font-size: 12px; line-height: 1.625; }
+    header p:first-of-type { margin-top: 4px; max-width: 384px; }
+    header p:nth-of-type(2) { margin-top: 8px; color: #334155; }
+    header > div:last-child { text-align: right; }
+    header > div:last-child p { margin-top: 4px; font-size: 14px; line-height: 20px; }
+    section { margin-top: 24px; }
+    section:first-of-type { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    dl, section > div, ol { border: 1px solid #e2e8f0; border-radius: 8px; }
+    dl { margin: 0; padding: 0 16px; }
+    dl > div { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid #e2e8f0; padding: 8px 0; font-size: 14px; line-height: 20px; }
+    dl > div:last-child { border-bottom: 0; }
+    dt { color: #64748b; font-weight: 500; }
+    dd { margin: 0; color: #0f172a; font-weight: 600; text-align: right; }
+    section:nth-of-type(2) > div { min-height: 80px; padding: 16px; color: #334155; font-size: 14px; line-height: 1.625; }
+    ol { margin: 0; padding: 16px 16px 16px 32px; color: #334155; font-size: 14px; line-height: 1.625; }
+    footer { margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; color: #475569; text-align: center; font-size: 12px; line-height: 1.625; }
+    footer p:first-child { color: #0f172a; font-weight: 600; }
+    @media print {
+      html, body, #quotation-print-root { width: 100%; overflow: visible; }
+    }
+  </style>
+</head>
+<body>
+  ${quotation}
+  <script>
+    let printed = false;
+    function printNow() {
+      if (printed) return;
+      printed = true;
+      window.focus();
+      window.print();
+    }
+    window.onafterprint = () => window.close();
+    const logo = document.querySelector("img");
+    if (logo && !logo.complete) {
+      logo.addEventListener("load", printNow, { once: true });
+      logo.addEventListener("error", printNow, { once: true });
+      setTimeout(printNow, 1000);
+    } else {
+      setTimeout(printNow, 50);
+    }
+  </script>
+</body>
+</html>`;
+}
+
+function printQuotation(project: Project): void {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    alert("Please allow pop-ups to print the quotation.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(quotationPrintHtml(project));
+  printWindow.document.close();
 }
 
 function dateInputValue(value: string | null): string {
@@ -414,7 +506,7 @@ function ProjectCard({
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={() => printQuotation(project)}
                     className="rounded-xl bg-[#1e3a8a] px-3 py-2 text-sm font-semibold text-white hover:bg-[#1e3a8a]/90"
                   >
                     Print / Save as PDF
