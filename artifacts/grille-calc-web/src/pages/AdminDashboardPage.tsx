@@ -733,12 +733,12 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background w-full max-w-6xl mx-auto">
-      <div className="bg-[#1e3a8a] text-white px-4 py-4 lg:px-6 flex items-center justify-between">
-        <div>
+      <div className="bg-[#1e3a8a] text-white px-4 py-4 lg:px-6 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold">5G Grille Admin</h1>
           <p className="text-blue-200 text-xs">Welcome, {user.name}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full sm:w-auto items-center gap-2">
           <button
             onClick={() => navigate("/calculator")}
             className="flex items-center gap-1.5 text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg font-medium"
