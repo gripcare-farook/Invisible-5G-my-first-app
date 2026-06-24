@@ -1,6 +1,10 @@
 import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
+import { QuotationPreview } from "@/components/QuotationPreview";
+import {
+  Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Calculator, Truck, LogOut, Plus, Trash2, ChevronDown, ChevronUp,
   Phone, MapPin, Loader2, Bell, Users, TrendingUp, UserCheck, Briefcase,
@@ -166,6 +170,7 @@ function ProjectCard({
   onDelete: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [quotationOpen, setQuotationOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState("");
@@ -344,13 +349,38 @@ function ProjectCard({
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium"
-          >
-            <Trash2 size={13} /> Delete project
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => setQuotationOpen(true)}
+              className="w-full sm:w-auto rounded-xl border border-[#1e3a8a]/30 px-3 py-2 text-sm font-semibold text-[#1e3a8a] hover:bg-[#1e3a8a]/5"
+            >
+              Quotation
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium sm:justify-start"
+            >
+              <Trash2 size={13} /> Delete project
+            </button>
+          </div>
+
+          <Dialog open={quotationOpen} onOpenChange={setQuotationOpen}>
+            <DialogContent className="w-[calc(100vw-1rem)] max-w-5xl max-h-[90vh] gap-0 overflow-hidden p-0">
+              <DialogHeader className="border-b border-border px-4 py-3 text-left">
+                <DialogTitle className="text-base">Quotation Preview</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[calc(90vh-7rem)] overflow-auto bg-slate-100 p-2 sm:p-4">
+                <QuotationPreview project={project} />
+              </div>
+              <div className="border-t border-border px-4 py-3">
+                <DialogClose className="w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted sm:w-auto">
+                  Close
+                </DialogClose>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
