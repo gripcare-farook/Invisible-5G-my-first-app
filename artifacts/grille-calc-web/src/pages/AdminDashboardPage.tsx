@@ -108,6 +108,12 @@ const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   paid: "bg-green-100 text-green-800",
 };
 
+const QUOTATION_COMPANY = {
+  name: "5G Invisible Grille",
+  email: "5ginvisiblegrille@gmail.com",
+  mobile: "+91 86800 72597, +91 74488 88221",
+};
+
 async function readApiError(resp: Response, fallback: string): Promise<string> {
   try {
     const data = (await resp.json()) as { success?: boolean; error?: string; message?: string };
@@ -128,6 +134,23 @@ function moneyValue(value: string | number | null | undefined): number {
 
 function fmtMoney(value: string | number | null | undefined): string {
   return `Rs. ${moneyValue(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function textOrDash(value: string): string {
+  return value.trim() || "-";
+}
+
+function quotationShareText(project: Project): string {
+  return [
+    `Quotation from ${QUOTATION_COMPANY.name}`,
+    `Project: ${textOrDash(project.name)}`,
+    `Client: ${textOrDash(project.clientName)}`,
+    `Site: ${textOrDash(project.siteLocation)}`,
+    `Total amount: ${fmtMoney(project.totalAmount)}`,
+    `Balance: ${fmtMoney(project.balanceAmount)}`,
+    `Contact: ${QUOTATION_COMPANY.mobile}`,
+    `Email: ${QUOTATION_COMPANY.email}`,
+  ].join("\n");
 }
 
 function dateInputValue(value: string | null): string {
@@ -174,6 +197,7 @@ function ProjectCard({
   const [saving, setSaving] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
   const [paymentForm, setPaymentForm] = useState({
     totalAmount: project.totalAmount ?? "0",
     advanceAmount: project.advanceAmount ?? "0",
@@ -256,6 +280,17 @@ function ProjectCard({
     if (!confirm(`Delete project "${project.name}"?`)) return;
     await fetch(`/api/projects/${project.id}`, { method: "DELETE", credentials: "include" });
     onDelete(project.id);
+  }
+
+  async function handleShareQuotation() {
+    const text = quotationShareText(project);
+    if (navigator.share) {
+      await navigator.share({ title: `Quotation - ${project.name}`, text }).catch(() => undefined);
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    setShareMessage("Share text copied.");
+    window.setTimeout(() => setShareMessage(""), 2500);
   }
 
   return (
@@ -375,8 +410,25 @@ function ProjectCard({
               <div className="max-h-[calc(90vh-7rem)] overflow-auto bg-slate-100 p-2 sm:p-4">
                 <QuotationPreview project={project} />
               </div>
-              <div className="border-t border-border px-4 py-3">
-                <DialogClose className="w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted sm:w-auto">
+              <div className="quotation-print-ui border-t border-border px-4 py-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="rounded-xl bg-[#1e3a8a] px-3 py-2 text-sm font-semibold text-white hover:bg-[#1e3a8a]/90"
+                  >
+                    Print / Save as PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleShareQuotation()}
+                    className="rounded-xl border border-[#1e3a8a]/30 px-3 py-2 text-sm font-semibold text-[#1e3a8a] hover:bg-[#1e3a8a]/5"
+                  >
+                    Share
+                  </button>
+                  {shareMessage && <div className="text-center text-xs font-medium text-green-700 sm:text-left">{shareMessage}</div>}
+                </div>
+                <DialogClose className="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted sm:w-auto">
                   Close
                 </DialogClose>
               </div>

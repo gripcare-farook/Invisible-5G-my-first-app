@@ -55,7 +55,7 @@ export function QuotationPreview({ project }: { project: QuotationProject }) {
   });
 
   return (
-    <article className="mx-auto min-h-[297mm] w-full max-w-[210mm] bg-white p-6 text-slate-900 print:min-h-0 print:max-w-none print:p-0">
+    <article className="quotation-print mx-auto min-h-[297mm] w-full max-w-[210mm] bg-white p-6 text-slate-900 print:min-h-0 print:max-w-none print:p-0">
       <header className="flex items-start justify-between gap-6 border-b-2 border-[#1e3a8a] pb-5">
         <div className="flex items-start gap-4">
           <img src="/5g-ivg-logo.png" alt="5G Invisible Grille logo" className="h-16 w-16 object-contain" />
@@ -120,4 +120,3 @@ export function QuotationPreview({ project }: { project: QuotationProject }) {
     </article>
   );
 }
-

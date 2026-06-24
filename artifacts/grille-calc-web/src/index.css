@@ -65,3 +65,35 @@
   * { @apply border-border box-border; }
   body { @apply font-sans antialiased bg-background text-foreground; }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .quotation-print,
+  .quotation-print * {
+    visibility: visible !important;
+  }
+
+  .quotation-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 186mm !important;
+    min-height: auto !important;
+    padding: 0 !important;
+  }
+
+  .quotation-print-ui {
+    display: none !important;
+  }
+}
