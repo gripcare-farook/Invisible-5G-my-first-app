@@ -75,7 +75,9 @@
   html,
   body,
   #root {
+    width: auto !important;
     height: auto !important;
+    min-width: 0 !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -94,11 +96,15 @@
   .quotation-print-shell,
   .quotation-print-wrapper,
   .quotation-print-root {
+    left: auto !important;
+    right: auto !important;
     position: static !important;
     inset: auto !important;
     transform: none !important;
     display: block !important;
-    width: 186mm !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
     max-width: none !important;
     height: auto !important;
     min-height: auto !important;
@@ -112,6 +118,9 @@
   }
 
   .quotation-print-root {
+    inline-size: 100% !important;
+    max-inline-size: none !important;
+    padding: 4mm !important;
     page-break-before: auto !important;
     page-break-after: auto !important;
   }
