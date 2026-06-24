@@ -310,6 +310,14 @@ function ProjectCard({
             </select>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setQuotationOpen(true)}
+            className="w-full rounded-xl bg-[#1e3a8a] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#1e3a8a]/90"
+          >
+            Quotation
+          </button>
+
           <form onSubmit={savePayment} className="border border-border rounded-xl p-3 space-y-3 bg-muted/30">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-sm text-foreground">Payment Details</h3>
@@ -350,13 +358,6 @@ function ProjectCard({
           </form>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
-              onClick={() => setQuotationOpen(true)}
-              className="w-full sm:w-auto rounded-xl border border-[#1e3a8a]/30 px-3 py-2 text-sm font-semibold text-[#1e3a8a] hover:bg-[#1e3a8a]/5"
-            >
-              Quotation
-            </button>
             <button
               type="button"
               onClick={handleDelete}
