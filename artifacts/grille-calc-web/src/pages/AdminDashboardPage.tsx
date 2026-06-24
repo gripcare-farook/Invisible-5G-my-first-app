@@ -403,11 +403,11 @@ function ProjectCard({
           </div>
 
           <Dialog open={quotationOpen} onOpenChange={setQuotationOpen}>
-            <DialogContent className="w-[calc(100vw-1rem)] max-w-5xl max-h-[90vh] gap-0 overflow-hidden p-0">
+            <DialogContent className="quotation-print-shell w-[calc(100vw-1rem)] max-w-5xl max-h-[90vh] gap-0 overflow-hidden p-0">
               <DialogHeader className="border-b border-border px-4 py-3 text-left">
                 <DialogTitle className="text-base">Quotation Preview</DialogTitle>
               </DialogHeader>
-              <div className="max-h-[calc(90vh-7rem)] overflow-auto bg-slate-100 p-2 sm:p-4">
+              <div className="quotation-print-wrapper max-h-[calc(90vh-7rem)] overflow-auto bg-slate-100 p-2 sm:p-4">
                 <QuotationPreview project={project} />
               </div>
               <div className="quotation-print-ui border-t border-border px-4 py-3">
