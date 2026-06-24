@@ -310,32 +310,32 @@ function ProjectCard({
               <h3 className="font-semibold text-sm text-foreground">Payment Details</h3>
               <PaymentBadge status={project.paymentStatus} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-2">
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Total Amount</label>
-                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.totalAmount} onChange={(e) => setPayment("totalAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.totalAmount} onChange={(e) => setPayment("totalAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Advance Amount</label>
-                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.advanceAmount} onChange={(e) => setPayment("advanceAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.advanceAmount} onChange={(e) => setPayment("advanceAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Received Amount</label>
-                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.receivedAmount} onChange={(e) => setPayment("receivedAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={paymentForm.receivedAmount} onChange={(e) => setPayment("receivedAmount", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Balance</label>
-                <div className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white text-muted-foreground">
+                <div className="w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white text-muted-foreground">
                   {fmtMoney(Math.max(0, moneyValue(paymentForm.totalAmount) - moneyValue(paymentForm.receivedAmount)))}
                 </div>
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Received Date</label>
-                <input type="date" value={paymentForm.receivedDate} onChange={(e) => setPayment("receivedDate", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+                <input type="date" value={paymentForm.receivedDate} onChange={(e) => setPayment("receivedDate", e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Payment Notes</label>
-                <textarea value={paymentForm.paymentNotes} onChange={(e) => setPayment("paymentNotes", e.target.value)} rows={2} placeholder="UPI, cash, bank transfer, pending reason..." className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40 resize-none" />
+                <textarea value={paymentForm.paymentNotes} onChange={(e) => setPayment("paymentNotes", e.target.value)} rows={2} placeholder="UPI, cash, bank transfer, pending reason..." className="w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40 resize-none" />
               </div>
             </div>
             {paymentError && <div className="text-sm text-red-600">{paymentError}</div>}
@@ -399,12 +399,12 @@ function AddProjectForm({
     }
   }
 
-  const inp = "w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40";
+  const inp = "w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40";
 
   return (
     <form onSubmit={handleSubmit} className="bg-[#1e3a8a]/5 border border-[#1e3a8a]/20 rounded-2xl p-4 space-y-3">
       <h3 className="font-semibold text-sm text-[#1e3a8a]">New Project</h3>
-      <div className="space-y-2">
+      <div className="space-y-3 sm:space-y-2">
         <div>
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Project Name *</label>
           <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Ramesh Balcony Grille" className={inp} required />
@@ -571,12 +571,12 @@ function AddLeadForm({ onSave, onCancel }: { onSave: (lead: Lead) => void; onCan
     }
   }
 
-  const input = "w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40";
+  const input = "w-full border border-border rounded-lg px-3 py-2.5 sm:py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40";
 
   return (
     <form onSubmit={handleSubmit} className="bg-[#1e3a8a]/5 border border-[#1e3a8a]/20 rounded-2xl p-4 space-y-3">
       <h3 className="font-semibold text-sm text-[#1e3a8a]">New Lead</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-2">
         <div className="sm:col-span-2">
           <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Customer Name *</label>
           <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Client name" className={input} required />
@@ -729,7 +729,7 @@ export default function AdminDashboardPage() {
   if (!user) return null;
 
   const tabCls = (t: "projects" | "leads" | "activity") =>
-    `flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors ${activeTab === t ? "bg-[#1e3a8a] text-white" : "text-muted-foreground hover:text-foreground"}`;
+    `flex-1 min-w-0 text-xs sm:text-sm font-semibold py-2 sm:py-2.5 rounded-xl transition-colors ${activeTab === t ? "bg-[#1e3a8a] text-white" : "text-muted-foreground hover:text-foreground"}`;
 
   return (
     <div className="min-h-screen bg-background w-full max-w-6xl mx-auto">
@@ -795,10 +795,10 @@ export default function AdminDashboardPage() {
 
         <div className="flex gap-1 bg-muted rounded-2xl p-1">
           <button onClick={() => setActiveTab("projects")} className={tabCls("projects")}>
-            <Briefcase size={14} className="inline mr-1" />Projects ({projects.length})
+            <Briefcase size={14} className="hidden sm:inline mr-1" />Projects ({projects.length})
           </button>
           <button onClick={() => setActiveTab("leads")} className={tabCls("leads")}>
-            <UserCheck size={14} className="inline mr-1" />Leads
+            <UserCheck size={14} className="hidden sm:inline mr-1" />Leads
             {openLeads.length > 0 && (
               <span className="ml-1.5 text-xs bg-orange-400 text-white font-bold px-1.5 py-0.5 rounded-full">{openLeads.length}</span>
             )}
@@ -807,7 +807,7 @@ export default function AdminDashboardPage() {
             onClick={() => { setActiveTab("activity"); if (activityLogs.length === 0) void fetchActivity(); }}
             className={tabCls("activity")}
           >
-            <Clock size={14} className="inline mr-1" />Log
+            <Clock size={14} className="hidden sm:inline mr-1" />Log
           </button>
         </div>
 
@@ -827,7 +827,7 @@ export default function AdminDashboardPage() {
               <AddProjectForm onSave={handleProjectAdded} onCancel={() => setShowAddProject(false)} />
             )}
 
-            <div className="flex gap-1.5 flex-wrap">
+            <div className="flex flex-wrap gap-x-1.5 gap-y-2 sm:gap-y-1.5">
               {(["all", ...PROJECT_STATUSES] as const).map((s) => (
                 <button
                   key={s}
@@ -968,7 +968,7 @@ export default function AdminDashboardPage() {
               <AddLeadForm onSave={handleLeadAdded} onCancel={() => setShowAddLead(false)} />
             )}
 
-            <div className="flex gap-1.5 flex-wrap">
+            <div className="flex flex-wrap gap-x-1.5 gap-y-2 sm:gap-y-1.5">
               {(["all", "new", "contacted", "interested", "not_interested", "converted", "lost"] as const).map((s) => (
                 <button
                   key={s}
