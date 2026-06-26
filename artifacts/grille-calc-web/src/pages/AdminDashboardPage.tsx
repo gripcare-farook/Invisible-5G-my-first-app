@@ -67,6 +67,15 @@ interface ActivityLog {
   createdAt: string;
 }
 
+interface WeeklySettlementRow {
+  saved_at?: unknown;
+  project_id?: unknown;
+  project_name?: unknown;
+  expense_type?: unknown;
+  expense_category?: unknown;
+  amount?: unknown;
+}
+
 const LEAD_STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
   contacted: "bg-yellow-100 text-yellow-800",
@@ -249,6 +258,26 @@ function dateInputValue(value: string | null): string {
   return value ? value.slice(0, 10) : "";
 }
 
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function savedAtDay(value: unknown): string {
+  const text = String(value ?? "").trim();
+  const indian = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (indian) {
+    const [, d, m, y] = indian;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : "";
+}
+
+function amountValue(value: unknown): number {
+  const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function StatusBadge({ status }: { status: ProjectStatus }) {
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${PROJECT_STATUS_COLORS[status]}`}>
@@ -272,6 +301,117 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
       <div className={`text-xs font-semibold mt-0.5 ${color ? "text-white/80" : "text-muted-foreground"}`}>{label}</div>
       {sub && <div className={`text-xs mt-0.5 ${color ? "text-white/60" : "text-muted-foreground"}`}>{sub}</div>}
     </div>
+  );
+}
+
+function LabourPaymentSummary() {
+  const [startDate, setStartDate] = useState(todayInputValue);
+  const [endDate, setEndDate] = useState(todayInputValue);
+  const [rows, setRows] = useState<WeeklySettlementRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const matchingRows = rows
+    .map((row) => ({ row, day: savedAtDay(row.saved_at), amount: amountValue(row.amount) }))
+    .filter(({ row, day }) =>
+      String(row.expense_type ?? "").trim().toLowerCase() === "labour" &&
+      String(row.expense_category ?? "").trim().toLowerCase() === "working cost" &&
+      day >= startDate &&
+      day <= endDate
+    );
+  const total = matchingRows.reduce((sum, item) => sum + item.amount, 0);
+  const dailyTotals = Object.entries(
+    matchingRows.reduce<Record<string, number>>((acc, item) => {
+      acc[item.day] = (acc[item.day] ?? 0) + item.amount;
+      return acc;
+    }, {})
+  ).sort(([a], [b]) => a.localeCompare(b));
+  const recentRows = [...matchingRows].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 8);
+
+  async function refresh() {
+    if (!startDate || !endDate || startDate > endDate) {
+      setError("Choose a valid start and end date.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const resp = await fetch("/api/sheets/weekly-settlement", { credentials: "include" });
+      const data = (await resp.json()) as { success?: boolean; rows?: WeeklySettlementRow[]; message?: string };
+      if (!resp.ok || !data.success) throw new Error(data.message || "Unable to load WeeklySettlement.");
+      setRows(Array.isArray(data.rows) ? data.rows : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load WeeklySettlement.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="bg-white border border-border rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-bold text-sm text-foreground">Labour Payment Summary</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Labour / Working Cost from WeeklySettlement</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={loading}
+          className="flex items-center gap-1.5 text-xs bg-[#1e3a8a] text-white font-semibold px-3 py-2 rounded-lg hover:bg-[#1e3a8a]/90 disabled:opacity-50"
+        >
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+          Refresh
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Start Date
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1 w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+        </label>
+        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          End Date
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1 w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]/40" />
+        </label>
+      </div>
+
+      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
+
+      <div className="rounded-xl bg-[#1e3a8a] px-4 py-3 text-white">
+        <div className="text-xs text-blue-100 font-semibold">Total Labour Working Cost</div>
+        <div className="text-2xl font-bold mt-1">{fmtMoney(total)}</div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border overflow-hidden">
+          <div className="px-3 py-2 text-xs font-bold text-foreground bg-muted">Day-by-day totals</div>
+          {dailyTotals.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground">No matching rows.</div>
+          ) : dailyTotals.map(([day, amount]) => (
+            <div key={day} className="flex justify-between gap-3 px-3 py-2 border-t border-border text-xs">
+              <span>{day}</span>
+              <strong>{fmtMoney(amount)}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-border overflow-hidden">
+          <div className="px-3 py-2 text-xs font-bold text-foreground bg-muted">Recent matching rows</div>
+          {recentRows.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground">No matching rows.</div>
+          ) : recentRows.map(({ row, day, amount }, index) => (
+            <div key={`${day}-${String(row.project_id ?? "")}-${index}`} className="flex justify-between gap-3 px-3 py-2 border-t border-border text-xs">
+              <div className="min-w-0">
+                <div className="font-semibold truncate">{String(row.project_name ?? "-")}</div>
+                <div className="text-muted-foreground">{day}</div>
+              </div>
+              <strong className="shrink-0">{fmtMoney(amount)}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -950,6 +1090,8 @@ export default function AdminDashboardPage() {
           <StatCard label="Total Received" value={fmtMoney(totalReceivedAmount)} sub="project payments" color="bg-green-600" />
           <StatCard label="Total Pending" value={fmtMoney(totalPendingAmount)} sub="balance due" color="bg-orange-500" />
         </div>
+
+        <LabourPaymentSummary />
 
         <div className="grid grid-cols-3 gap-2 text-xs">
           {[

@@ -1,7 +1,50 @@
 import { Router, type IRouter } from "express";
 import { logger } from "../lib/logger";
+import { requireAdmin } from "../middlewares/auth";
 
 const router: IRouter = Router();
+
+router.get("/sheets/weekly-settlement", requireAdmin, async (_req, res) => {
+  const appsScriptUrl = process.env["APPS_SCRIPT_URL"] ?? process.env["GOOGLE_APPS_SCRIPT_URL"];
+  if (!appsScriptUrl || !appsScriptUrl.startsWith("https://script.google.com/")) {
+    res.status(500).json({
+      success: false,
+      message: "Apps Script URL is not configured on the server.",
+    });
+    return;
+  }
+
+  const url = new URL(appsScriptUrl);
+  url.searchParams.set("action", "weeklySettlement");
+
+  let response: Response;
+  try {
+    response = await fetch(url, { redirect: "follow" });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ err: msg }, "sheets/weekly-settlement: network error reaching Apps Script");
+    res.status(502).json({ success: false, message: `Could not reach Apps Script: ${msg}` });
+    return;
+  }
+
+  if (!response.ok) {
+    res.status(502).json({
+      success: false,
+      message: `Apps Script returned HTTP ${response.status} ${response.statusText}.`,
+    });
+    return;
+  }
+
+  const result = (await response.json()) as {
+    success?: boolean;
+    message?: string;
+    rows?: unknown[];
+    data?: { rows?: unknown[] };
+  };
+  const rows = Array.isArray(result.rows) ? result.rows : Array.isArray(result.data?.rows) ? result.data.rows : [];
+
+  res.json({ success: result.success ?? true, rows });
+});
 
 router.post("/sheets/sync", async (req, res) => {
   const { appsScriptUrl, payload } = req.body as {
