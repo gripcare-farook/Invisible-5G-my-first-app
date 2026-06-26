@@ -273,6 +273,25 @@ function savedAtDay(value: unknown): string {
   return iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : "";
 }
 
+function savedAtTime(value: unknown): number {
+  const text = String(value ?? "").trim();
+  const indian = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
+  if (indian) {
+    const [, d, m, y, hh = "0", mm = "0", ss = "0", meridiem] = indian;
+    let hour = Number(hh);
+    if (meridiem?.toUpperCase() === "PM" && hour < 12) hour += 12;
+    if (meridiem?.toUpperCase() === "AM" && hour === 12) hour = 0;
+    return new Date(Number(y), Number(m) - 1, Number(d), hour, Number(mm), Number(ss)).getTime();
+  }
+  const parsed = Date.parse(text);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function displayDay(value: string): string {
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}-${month}-${year}` : value;
+}
+
 function amountValue(value: unknown): number {
   const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -327,7 +346,9 @@ function LabourPaymentSummary() {
     }, {})
   ).sort(([a], [b]) => a.localeCompare(b));
   const dailyTotalsSum = dailyTotals.reduce((sum, [, amount]) => sum + amount, 0);
-  const recentRows = [...matchingRows].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 8);
+  const recentRows = [...matchingRows]
+    .sort((a, b) => savedAtTime(a.row.saved_at) - savedAtTime(b.row.saved_at))
+    .slice(0, 8);
 
   async function refresh() {
     if (!startDate || !endDate || startDate > endDate) {
@@ -393,7 +414,7 @@ function LabourPaymentSummary() {
             <>
               {dailyTotals.map(([day, amount]) => (
                 <div key={day} className="flex justify-between gap-3 px-3 py-2 border-t border-border text-xs">
-                  <span>{day}</span>
+                  <span>{displayDay(day)}</span>
                   <strong>{fmtMoney(amount)}</strong>
                 </div>
               ))}
@@ -413,7 +434,7 @@ function LabourPaymentSummary() {
             <div key={`${day}-${String(row.project_id ?? "")}-${index}`} className="flex justify-between gap-3 px-3 py-2 border-t border-border text-xs">
               <div className="min-w-0">
                 <div className="font-semibold truncate">{String(row.project_name ?? "-")}</div>
-                <div className="text-muted-foreground">{day}</div>
+                <div className="text-muted-foreground">{displayDay(day)}</div>
               </div>
               <strong className="shrink-0">{fmtMoney(amount)}</strong>
             </div>
