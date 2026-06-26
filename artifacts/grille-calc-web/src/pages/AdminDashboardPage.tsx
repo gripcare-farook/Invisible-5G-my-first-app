@@ -326,6 +326,7 @@ function LabourPaymentSummary() {
       return acc;
     }, {})
   ).sort(([a], [b]) => a.localeCompare(b));
+  const dailyTotalsSum = dailyTotals.reduce((sum, [, amount]) => sum + amount, 0);
   const recentRows = [...matchingRows].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 8);
 
   async function refresh() {
@@ -388,12 +389,20 @@ function LabourPaymentSummary() {
           <div className="px-3 py-2 text-xs font-bold text-foreground bg-muted">Day-by-day totals</div>
           {dailyTotals.length === 0 ? (
             <div className="px-3 py-3 text-xs text-muted-foreground">No matching rows.</div>
-          ) : dailyTotals.map(([day, amount]) => (
-            <div key={day} className="flex justify-between gap-3 px-3 py-2 border-t border-border text-xs">
-              <span>{day}</span>
-              <strong>{fmtMoney(amount)}</strong>
-            </div>
-          ))}
+          ) : (
+            <>
+              {dailyTotals.map(([day, amount]) => (
+                <div key={day} className="flex justify-between gap-3 px-3 py-2 border-t border-border text-xs">
+                  <span>{day}</span>
+                  <strong>{fmtMoney(amount)}</strong>
+                </div>
+              ))}
+              <div className="flex justify-between gap-3 px-3 py-2 border-t-2 border-border bg-muted/50 text-xs font-bold">
+                <span>Total Labour Working Cost</span>
+                <strong>{fmtMoney(dailyTotalsSum)}</strong>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="rounded-xl border border-border overflow-hidden">
