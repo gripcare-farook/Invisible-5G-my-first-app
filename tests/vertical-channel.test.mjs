@@ -83,4 +83,30 @@ for (const [name, calculateProject] of implementations) {
     assert.equal(totals.totalChannelFeet, 10);
     assert.equal(totals.totalChannelPieces, 1);
   });
+
+  test(`${name}: automatic Horizontal channel uses left and right height only`, () => {
+    const opening = {
+      id: "horizontal-example",
+      label: "Horizontal example",
+      width: 5,
+      height: 4.5,
+      quantity: 1,
+      modelType: "horizontal",
+      gapInches: 2,
+      channelInputMode: "pcs",
+      channelOverride: null,
+    };
+
+    const totals = calculateProject(
+      [opening],
+      { ...sharedInputs, channelCostPerPiece: 1300 },
+    );
+
+    assert.equal(totals.openings[0].channelUsedFeet, 9);
+    assert.equal(totals.openings[0].channelPieces, 1);
+    assert.equal(totals.openings[0].channelBalanceFeet, 1);
+    assert.equal(totals.openings[0].channelCost, 1170);
+    assert.equal(totals.totalChannelFeet, 9);
+    assert.equal(totals.totalChannelPieces, 1);
+  });
 }

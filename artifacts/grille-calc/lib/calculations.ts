@@ -128,10 +128,11 @@ export function calculateOpening(
   const qty = Math.max(1, Math.round(num(o.quantity) || 1));
   const stdLen = CHANNEL_STANDARD_LENGTH_FT;
   const autoVerticalChannelFeet = width * 2 * qty;
+  const autoHorizontalChannelFeet = height * 2 * qty;
   const autoChannelPieces =
     o.modelType === "vertical"
       ? Math.ceil(autoVerticalChannelFeet / stdLen)
-      : Math.ceil(height / stdLen) * 2;
+      : Math.ceil(autoHorizontalChannelFeet / stdLen);
 
   const overrideVal =
     o.channelOverride && o.channelOverride > 0 ? o.channelOverride : 0;
@@ -153,12 +154,14 @@ export function calculateOpening(
   } else {
     channelPieces = autoChannelPieces;
     channelUsedFeet =
-      o.modelType === "vertical" ? autoVerticalChannelFeet : channelPieces * stdLen;
+      o.modelType === "vertical" ? autoVerticalChannelFeet : autoHorizontalChannelFeet;
     channelBalanceFeet = channelPieces * stdLen - channelUsedFeet;
   }
 
   const isAutoVertical = o.modelType === "vertical" && overrideVal === 0;
-  const totalChannelFeet = isAutoVertical ? channelUsedFeet : channelPieces * stdLen;
+  const isAutoHorizontal = o.modelType === "horizontal" && overrideVal === 0;
+  const totalChannelFeet =
+    isAutoVertical || isAutoHorizontal ? channelUsedFeet : channelPieces * stdLen;
   const fastenerQty = totalChannelFeet;
 
   const stiffnerDimFt = o.modelType === "vertical" ? width : height;
@@ -178,7 +181,7 @@ export function calculateOpening(
       : totalStiffnerMeters * num(s.stiffnerCostPerMeter);
   const labourCost = sqft * num(s.labourCostPerSqft);
 
-  const channelQtyMultiplier = isAutoVertical ? 1 : qty;
+  const channelQtyMultiplier = isAutoVertical || isAutoHorizontal ? 1 : qty;
   const subtotal =
     wireCost * qty +
     channelCost * channelQtyMultiplier +
@@ -232,6 +235,7 @@ export function calculateProject(
   let stiffnerCost = 0;
   let labourCost = 0;
   let autoVerticalChannelFeet = 0;
+  let autoHorizontalChannelFeet = 0;
 
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
@@ -242,8 +246,13 @@ export function calculateProject(
     const isAutoVertical =
       opening.modelType === "vertical" &&
       !(opening.channelOverride && opening.channelOverride > 0);
+    const isAutoHorizontal =
+      opening.modelType === "horizontal" &&
+      !(opening.channelOverride && opening.channelOverride > 0);
     if (isAutoVertical) {
       autoVerticalChannelFeet += r.totalChannelFeet;
+    } else if (isAutoHorizontal) {
+      autoHorizontalChannelFeet += r.totalChannelFeet;
     } else {
       totalChannelPieces += r.channelPieces;
     }
@@ -258,6 +267,7 @@ export function calculateProject(
     labourCost += r.labourCost;
   }
   totalChannelPieces += Math.ceil(autoVerticalChannelFeet / CHANNEL_STANDARD_LENGTH_FT);
+  totalChannelPieces += Math.ceil(autoHorizontalChannelFeet / CHANNEL_STANDARD_LENGTH_FT);
 
   const shippingCost =
     s.shippingMode === "manual"
