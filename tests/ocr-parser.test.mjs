@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parse_transport_data } from "../artifacts/api-server/src/routes/ocr.ts";
+import { parse_transport_data } from "../artifacts/api-server/src/lib/ocr-parser.ts";
 
 test("OCR transport parser keeps numbered route rows and skips OCR noise", () => {
   const sample = `
@@ -22,7 +22,7 @@ Channa 19 - 1000
     result.transportRows.map((row) => [row.rowNumber, row.startingPoint, row.endingPoint]),
     [
       [1, "5G", "Annanagel"],
-      [2, "5G", "Nugambakkam"],
+      [2, "5G", "Nungambakkam"],
       [3, "Guindy", "5G"],
       [17, "5G", "virugambakkam"],
     ],
@@ -63,4 +63,31 @@ test("OCR transport parser corrects common place OCR mistakes", () => {
   assert.equal(result.transportRows[0].startingPoint, "5G");
   assert.equal(result.transportRows[0].endingPoint, "East Tambaram");
   assert.equal(result.transportRows[0].correctedFrom, "East than baram");
+});
+
+test("OCR transport parser detects date-prefixed and unnumbered arrow routes", () => {
+  const sample = `
+15-DEC 5G -> Adhanyoh
+5G -> Cn Zemel
+Cenompet -> 5G
+5G -> Park 63 -> Navalanav Hitamdan
+21-DEC 5G -> Hitamandani -> Panyu
+5G -> Bup Vannayaranam ->
+MadanVanam 135
+`;
+
+  const result = parse_transport_data(sample, "sample.txt");
+
+  assert.equal(result.transportRows.length, 6);
+  assert.deepEqual(
+    result.transportRows.map((row) => [row.rowNumber, row.startingPoint, row.endingPoint, row.reviewNeeded]),
+    [
+      [15, "5G", "Adhanyoh", "NO"],
+      [1, "5G", "Cn Zemel", "NO"],
+      [2, "Cenompet", "5G", "NO"],
+      [3, "5G", "Park 63 -> Navalanav Hitamdan", "YES"],
+      [21, "5G", "Hitamandani -> Panyu", "YES"],
+      [4, "5G", "Bup Vannayaranam -> MadanVanam 135", "YES"],
+    ],
+  );
 });
