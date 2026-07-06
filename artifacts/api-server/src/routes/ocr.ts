@@ -35,6 +35,10 @@ function hasPlaceText(value: string) {
   return /[a-z]/i.test(value) && !mostlyNumbers(value);
 }
 
+function cleanPoint(value: string) {
+  return value.trim().replace(/\s*\(\d+\)\s*$/, "").trim();
+}
+
 export function parse_transport_data(ocrText: string, sourceFile: string) {
   void sourceFile;
   const lines = ocrText.split(/\r?\n/);
@@ -42,26 +46,37 @@ export function parse_transport_data(ocrText: string, sourceFile: string) {
   const routeLines = markerIndex === -1 ? lines : lines.slice(markerIndex + 1);
   const transportRows: TransportRow[] = [];
 
-  for (const rawLine of routeLines) {
+  for (let i = 0; i < routeLines.length; i += 1) {
+    const rawLine = routeLines[i];
     const rawOcrLine = rawLine.trim();
     const numbered = /^(\d+)[).]\s*(.+)$/.exec(rawOcrLine);
     if (!numbered) continue;
 
-    const body = numbered[2].trim();
-    const separatorMatches = [...body.matchAll(/\s*(->|,|-|\bto\b|\bTO\b|\s{2,})\s*/g)];
+    let body = numbered[2].trim();
+    let combinedRawOcrLine = rawOcrLine;
+    let continued = false;
+    const nextLine = routeLines[i + 1]?.trim() ?? "";
+    if (nextLine && !/^\d+[).]\s*/.test(nextLine) && (/(?:->|→|-|,|\bto\b|\bTO\b)\s*$/.test(body) || body.includes("/"))) {
+      body = `${body} ${nextLine}`.trim();
+      combinedRawOcrLine = `${combinedRawOcrLine} ${nextLine}`;
+      continued = true;
+      i += 1;
+    }
+
+    const separatorMatches = [...body.matchAll(/\s*(->|→|,|-|\bto\b|\bTO\b|\s{2,})\s*/g)];
     const separator = separatorMatches.find((match) => match.index !== 0);
     if (!separator || separator.index === undefined) continue;
 
-    const startingPoint = body.slice(0, separator.index).trim();
-    const endingPoint = body.slice(separator.index + separator[0].length).trim();
+    const startingPoint = cleanPoint(body.slice(0, separator.index));
+    const endingPoint = cleanPoint(body.slice(separator.index + separator[0].length));
     if (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint)) continue;
 
     transportRows.push({
       rowNumber: Number(numbered[1]),
       startingPoint,
       endingPoint,
-      rawOcrLine,
-      reviewNeeded: separatorMatches.length > 1 ? "YES" : "NO",
+      rawOcrLine: combinedRawOcrLine,
+      reviewNeeded: continued || separatorMatches.length > 1 ? "YES" : "NO",
     });
   }
 

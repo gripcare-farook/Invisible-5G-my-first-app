@@ -32,3 +32,26 @@ Channa 19 - 1000
   assert.equal(result.transportRows.some((row) => row.rawOcrLine === "6 - Nov"), false);
   assert.equal(result.transportRows.some((row) => row.rawOcrLine === "5G - 2"), false);
 });
+
+test("OCR transport parser handles wrapped multi-stop route rows", () => {
+  const sample = `
+24) 5G  Bolini  Chomompet
+26) 5G  Shiram park63
+32) 5G  Moyeppevit / Mangadu
+ Ruby Horizon  Kalam
+34) Guindy - 5G (100)
+`;
+
+  const result = parse_transport_data(sample, "sample.txt");
+
+  assert.equal(result.transportRows.length, 4);
+  assert.deepEqual(
+    result.transportRows.map((row) => [row.rowNumber, row.startingPoint, row.endingPoint, row.reviewNeeded]),
+    [
+      [24, "5G", "Bolini  Chomompet", "YES"],
+      [26, "5G", "Shiram park63", "NO"],
+      [32, "5G", "Moyeppevit / Mangadu Ruby Horizon  Kalam", "YES"],
+      [34, "Guindy", "5G", "NO"],
+    ],
+  );
+});
