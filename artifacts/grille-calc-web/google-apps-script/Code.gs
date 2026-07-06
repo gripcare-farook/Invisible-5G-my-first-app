@@ -3,7 +3,7 @@
  * Deploy as Web App: Execute as Me, Access: Anyone
  *
  * Required Google Sheet tabs:
- *   Projects | OpeningDetails | WeeklySettlement | Stock
+ *   Projects | OpeningDetails | WeeklySettlement | Stock | Transport
  *
  * Stock sheet format (A:D):
  *   item_code | item_name | unit | quantity
@@ -35,6 +35,13 @@ function doPost(e) {
 
     var data = JSON.parse(raw);
    var ss = SpreadsheetApp.openById("1DjsyPAZDp-pjojnlCBPb3ECaF3LrGEDKTJEs2lNHAiU");
+
+    if (data.action === "saveTransportRows") {
+      var rowsAdded = saveToTransport(ss, data);
+      return ContentService
+        .createTextOutput(JSON.stringify({ success: true, message: "Transport rows saved.", rowsAdded: rowsAdded }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (data.action !== "saveFullProject") {
       return respond(false, "Unknown action: " + data.action);
@@ -181,6 +188,35 @@ function saveToWeeklySettlement(ss, data) {
 }
 
 // ─── Stock deduction ──────────────────────────────────────────────────────────
+
+var TRANSPORT_HEADERS = [
+  "Date", "Source File", "Row Number", "Starting Point", "Ending Point", "Raw OCR Line", "Review Needed"
+];
+
+function saveToTransport(ss, data) {
+  var sheet = getOrCreateSheet(ss, "Transport", TRANSPORT_HEADERS);
+  var rows = data.rows || [];
+  var values = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    values.push([
+      data.savedAt || new Date().toISOString(),
+      data.sourceFile || "",
+      row.rowNumber,
+      row.startingPoint || "",
+      row.endingPoint || "",
+      row.rawOcrLine || "",
+      row.reviewNeeded || "NO"
+    ]);
+  }
+
+  if (values.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, values.length, TRANSPORT_HEADERS.length).setValues(values);
+  }
+
+  return values.length;
+}
 
 function deductFromStock(ss, data) {
   var sheet = ss.getSheetByName("Stock");

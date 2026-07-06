@@ -17,6 +17,14 @@ interface ParsedUpload {
   documentType: string;
 }
 
+interface SaveTransportRow {
+  rowNumber: number;
+  startingPoint: string;
+  endingPoint: string;
+  rawOcrLine: string;
+  reviewNeeded: "YES" | "NO";
+}
+
 interface TransportRow {
   rowNumber: number;
   startingPoint: string;
@@ -205,6 +213,31 @@ async function runOcr(documentUrl: string, apiKey: string) {
   };
 }
 
+function validateTransportSaveBody(body: unknown): { sourceFile: string; rows: SaveTransportRow[] } {
+  const data = body as { sourceFile?: unknown; rows?: unknown };
+  if (typeof data.sourceFile !== "string" || !data.sourceFile.trim()) throw new Error("Source file is required.");
+  if (!Array.isArray(data.rows) || data.rows.length === 0) throw new Error("At least one transport row is required.");
+
+  const rows = data.rows.map((row) => {
+    const r = row as Partial<SaveTransportRow>;
+    const rowNumber = r.rowNumber;
+    const startingPoint = typeof r.startingPoint === "string" ? r.startingPoint.trim() : "";
+    const endingPoint = typeof r.endingPoint === "string" ? r.endingPoint.trim() : "";
+    if (typeof rowNumber !== "number" || !Number.isFinite(rowNumber) || !startingPoint || !endingPoint || (r.reviewNeeded !== "YES" && r.reviewNeeded !== "NO")) {
+      throw new Error("Each row must include rowNumber, startingPoint, endingPoint, and reviewNeeded.");
+    }
+    return {
+      rowNumber,
+      startingPoint,
+      endingPoint,
+      rawOcrLine: typeof r.rawOcrLine === "string" ? r.rawOcrLine : "",
+      reviewNeeded: r.reviewNeeded,
+    };
+  });
+
+  return { sourceFile: data.sourceFile.trim(), rows };
+}
+
 router.post("/ocr/upload", async (req, res) => {
   try {
     const apiKey = process.env["MISTRAL_API_KEY"];
@@ -242,6 +275,59 @@ router.post("/ocr/upload", async (req, res) => {
       message,
     });
   }
+});
+
+router.post("/ocr/transport/save", async (req, res) => {
+  let input: { sourceFile: string; rows: SaveTransportRow[] };
+  try {
+    input = validateTransportSaveBody(req.body);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err instanceof Error ? err.message : "Invalid transport rows." });
+    return;
+  }
+
+  const appsScriptUrl = process.env["APPS_SCRIPT_URL"] ?? process.env["GOOGLE_APPS_SCRIPT_URL"];
+  if (!appsScriptUrl || !appsScriptUrl.startsWith("https://script.google.com/")) {
+    res.status(500).json({ success: false, message: "Apps Script URL is not configured on the server." });
+    return;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(appsScriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "saveTransportRows",
+        savedAt: new Date().toISOString(),
+        sourceFile: input.sourceFile,
+        rows: input.rows,
+      }),
+      redirect: "follow",
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ err: msg }, "ocr/transport/save: network error reaching Apps Script");
+    res.status(502).json({ success: false, message: `Could not reach Apps Script: ${msg}` });
+    return;
+  }
+
+  if (!response.ok) {
+    res.status(502).json({ success: false, message: `Apps Script returned HTTP ${response.status} ${response.statusText}.` });
+    return;
+  }
+
+  const result = (await response.json().catch(() => ({ success: false, message: "Apps Script response was not valid JSON." }))) as {
+    success?: boolean;
+    message?: string;
+    rowsAdded?: unknown;
+  };
+  if (!result.success) {
+    res.status(502).json({ success: false, message: result.message ?? "Apps Script could not save transport rows." });
+    return;
+  }
+
+  res.json({ success: true, rowsAdded: typeof result.rowsAdded === "number" ? result.rowsAdded : input.rows.length });
 });
 
 export default router;
