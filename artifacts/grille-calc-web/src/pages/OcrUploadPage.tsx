@@ -9,6 +9,14 @@ interface OcrResult {
   documentType: DocumentType;
   ocrText: string;
   pageCount: number;
+  reviewNeededCount: number;
+  transportRows: Array<{
+    rowNumber: number;
+    startingPoint: string;
+    endingPoint: string;
+    rawOcrLine: string;
+    reviewNeeded: "YES" | "NO";
+  }>;
 }
 
 export default function OcrUploadPage() {
@@ -106,17 +114,52 @@ export default function OcrUploadPage() {
       )}
 
       {result && (
-        <section className="bg-white rounded-2xl border border-border p-4 space-y-3">
-          <div>
-            <h2 className="font-semibold text-sm text-[#1e3a8a]">Extracted OCR Text</h2>
-            <p className="text-xs text-muted-foreground">
-              {result.sourceFile} · {result.documentType} · {result.pageCount} page{result.pageCount === 1 ? "" : "s"}
-            </p>
-          </div>
-          <pre className="whitespace-pre-wrap break-words rounded-xl bg-muted p-3 text-sm leading-relaxed text-foreground">
-            {result.ocrText || "No text found."}
-          </pre>
-        </section>
+        <>
+          <section className="bg-white rounded-2xl border border-border p-4 space-y-3">
+            <div>
+              <h2 className="font-semibold text-sm text-[#1e3a8a]">Extracted OCR Text</h2>
+              <p className="text-xs text-muted-foreground">
+                {result.sourceFile} · {result.documentType} · {result.pageCount} page{result.pageCount === 1 ? "" : "s"}
+              </p>
+            </div>
+            <pre className="whitespace-pre-wrap break-words rounded-xl bg-muted p-3 text-sm leading-relaxed text-foreground">
+              {result.ocrText || "No text found."}
+            </pre>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-border p-4 space-y-3">
+            <div>
+              <h2 className="font-semibold text-sm text-[#1e3a8a]">Transport Preview</h2>
+              <p className="text-xs text-muted-foreground">{result.reviewNeededCount} row{result.reviewNeededCount === 1 ? "" : "s"} need review</p>
+            </div>
+            {result.transportRows.length === 0 ? (
+              <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">No transport route rows detected.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead className="text-xs uppercase text-muted-foreground">
+                    <tr className="border-b border-border">
+                      <th className="py-2 pr-3 font-semibold">Row Number</th>
+                      <th className="py-2 pr-3 font-semibold">Starting Point</th>
+                      <th className="py-2 pr-3 font-semibold">Ending Point</th>
+                      <th className="py-2 font-semibold">Review Needed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.transportRows.map((row) => (
+                      <tr key={`${row.rowNumber}-${row.rawOcrLine}`} className="border-b border-border last:border-0">
+                        <td className="py-2 pr-3">{row.rowNumber}</td>
+                        <td className="py-2 pr-3">{row.startingPoint || "-"}</td>
+                        <td className="py-2 pr-3">{row.endingPoint || "-"}</td>
+                        <td className="py-2">{row.reviewNeeded}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
       )}
     </div>
   );

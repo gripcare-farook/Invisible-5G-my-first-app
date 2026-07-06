@@ -17,6 +17,48 @@ interface ParsedUpload {
   documentType: string;
 }
 
+interface TransportRow {
+  rowNumber: number;
+  startingPoint: string;
+  endingPoint: string;
+  rawOcrLine: string;
+  reviewNeeded: "YES" | "NO";
+}
+
+export function parse_transport_data(ocrText: string, sourceFile: string) {
+  void sourceFile;
+  const transportRows: TransportRow[] = [];
+  const separatorPattern = /\s*(->|,|-|\bto\b|\bTO\b)\s*/;
+
+  for (const rawLine of ocrText.split(/\r?\n/)) {
+    const rawOcrLine = rawLine.trim();
+    if (!rawOcrLine || /^\d{7,}$/.test(rawOcrLine.replace(/\D/g, ""))) continue;
+
+    const line = rawOcrLine.replace(/^\s*(?:[-*]\s*)?(?:\d+[\).:-]\s*)?/, "").trim();
+    const separatorMatch = separatorPattern.exec(line);
+    const parts = separatorMatch ? [line.slice(0, separatorMatch.index), line.slice(separatorMatch.index + separatorMatch[0].length)] : line.split(/\s{2,}/);
+    if (parts.length < 2) continue;
+
+    const startingPoint = parts[0]?.trim() ?? "";
+    const endingPoint = parts.slice(1).join(" ").trim();
+    if (!/[a-z0-9]/i.test(`${startingPoint}${endingPoint}`)) continue;
+
+    const reviewNeeded = !/[a-z0-9]/i.test(startingPoint) || !/[a-z0-9]/i.test(endingPoint) ? "YES" : "NO";
+    transportRows.push({
+      rowNumber: transportRows.length + 1,
+      startingPoint,
+      endingPoint,
+      rawOcrLine,
+      reviewNeeded,
+    });
+  }
+
+  return {
+    transportRows,
+    reviewNeededCount: transportRows.filter((row) => row.reviewNeeded === "YES").length,
+  };
+}
+
 function splitBuffer(buffer: Buffer, delimiter: Buffer) {
   const parts: Buffer[] = [];
   let start = 0;
@@ -154,6 +196,7 @@ router.post("/ocr/upload", async (req, res) => {
     const fileId = await uploadToMistral(file, apiKey);
     const documentUrl = await getSignedUrl(fileId, apiKey);
     const { ocrText, pageCount } = await runOcr(documentUrl, apiKey);
+    const { transportRows, reviewNeededCount } = parse_transport_data(ocrText, file.filename);
 
     res.json({
       success: true,
@@ -161,6 +204,8 @@ router.post("/ocr/upload", async (req, res) => {
       documentType,
       ocrText,
       pageCount,
+      transportRows,
+      reviewNeededCount,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "OCR processing failed.";
