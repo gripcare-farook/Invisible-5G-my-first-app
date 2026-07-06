@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Calculator, FolderOpen, Settings, Truck, LogIn, Loader2 } from "lucide-react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Calculator, FileText, FolderOpen, Settings, Truck, LogIn, Loader2 } from "lucide-react";
 import CalculatorPage from "@/pages/CalculatorPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import OcrUploadPage from "@/pages/OcrUploadPage";
 import LoginPage from "@/pages/LoginPage";
 import TransportPage from "@/pages/TransportPage";
 import AdminDashboardPage from "@/pages/AdminDashboardPage";
@@ -14,7 +15,7 @@ import { SavedProject } from "@/lib/storage";
 import { Opening, SharedInputs } from "@/lib/calculations";
 import { TransportData } from "@/lib/transport";
 
-type Tab = "calculator" | "projects" | "settings";
+type Tab = "calculator" | "projects" | "ocr" | "settings";
 
 export interface LoadedProject {
   id: string;
@@ -44,7 +45,8 @@ function RootRedirect() {
 }
 
 function MainApp() {
-  const [tab, setTab] = useState<Tab>("calculator");
+  const location = useLocation();
+  const [tab, setTab] = useState<Tab>(() => (location.pathname === "/ocr" ? "ocr" : "calculator"));
   const [loadProject, setLoadProject] = useState<LoadedProject | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -76,6 +78,7 @@ function MainApp() {
           />
         </div>
         {tab === "projects" && <ProjectsPage onLoad={handleLoadProject} />}
+        {tab === "ocr" && <OcrUploadPage />}
         {tab === "settings" && <SettingsPage />}
       </div>
 
@@ -84,6 +87,7 @@ function MainApp() {
           [
             { key: "calculator", label: "Calculator", Icon: Calculator },
             { key: "projects", label: "Projects", Icon: FolderOpen },
+            { key: "ocr", label: "OCR", Icon: FileText },
             { key: "settings", label: "Settings", Icon: Settings },
           ] as { key: Tab; label: string; Icon: typeof Calculator }[]
         ).map(({ key, label, Icon }) => (
@@ -129,6 +133,7 @@ export default function App() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/calculator" element={<MainApp />} />
+          <Route path="/ocr" element={<MainApp />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/transport" element={<TransportPage />} />
           <Route path="/labour" element={<LabourDashboardPage />} />

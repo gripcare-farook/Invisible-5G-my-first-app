@@ -8,6 +8,7 @@ import leadsRouter from "./leads";
 import notificationsRouter from "./notifications";
 import projectsRouter from "./projects";
 import activityRouter from "./activity";
+import ocrRouter from "./ocr";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(leadsRouter);
 router.use(notificationsRouter);
 router.use(projectsRouter);
 router.use(activityRouter);
+router.use(ocrRouter);
 
 export default router;
