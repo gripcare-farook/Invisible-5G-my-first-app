@@ -25,31 +25,43 @@ interface TransportRow {
   reviewNeeded: "YES" | "NO";
 }
 
+function mostlyNumbers(value: string) {
+  const letters = (value.match(/[a-z]/gi) ?? []).length;
+  const digits = (value.match(/\d/g) ?? []).length;
+  return digits > 0 && digits > letters;
+}
+
+function hasPlaceText(value: string) {
+  return /[a-z]/i.test(value) && !mostlyNumbers(value);
+}
+
 export function parse_transport_data(ocrText: string, sourceFile: string) {
   void sourceFile;
+  const lines = ocrText.split(/\r?\n/);
+  const markerIndex = lines.findIndex((line) => /^#?\s*transports?\b/i.test(line.trim()));
+  const routeLines = markerIndex === -1 ? lines : lines.slice(markerIndex + 1);
   const transportRows: TransportRow[] = [];
-  const separatorPattern = /\s*(->|,|-|\bto\b|\bTO\b)\s*/;
 
-  for (const rawLine of ocrText.split(/\r?\n/)) {
+  for (const rawLine of routeLines) {
     const rawOcrLine = rawLine.trim();
-    if (!rawOcrLine || /^\d{7,}$/.test(rawOcrLine.replace(/\D/g, ""))) continue;
+    const numbered = /^(\d+)[).]\s*(.+)$/.exec(rawOcrLine);
+    if (!numbered) continue;
 
-    const line = rawOcrLine.replace(/^\s*(?:[-*]\s*)?(?:\d+[\).:-]\s*)?/, "").trim();
-    const separatorMatch = separatorPattern.exec(line);
-    const parts = separatorMatch ? [line.slice(0, separatorMatch.index), line.slice(separatorMatch.index + separatorMatch[0].length)] : line.split(/\s{2,}/);
-    if (parts.length < 2) continue;
+    const body = numbered[2].trim();
+    const separatorMatches = [...body.matchAll(/\s*(->|,|-|\bto\b|\bTO\b|\s{2,})\s*/g)];
+    const separator = separatorMatches.find((match) => match.index !== 0);
+    if (!separator || separator.index === undefined) continue;
 
-    const startingPoint = parts[0]?.trim() ?? "";
-    const endingPoint = parts.slice(1).join(" ").trim();
-    if (!/[a-z0-9]/i.test(`${startingPoint}${endingPoint}`)) continue;
+    const startingPoint = body.slice(0, separator.index).trim();
+    const endingPoint = body.slice(separator.index + separator[0].length).trim();
+    if (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint)) continue;
 
-    const reviewNeeded = !/[a-z0-9]/i.test(startingPoint) || !/[a-z0-9]/i.test(endingPoint) ? "YES" : "NO";
     transportRows.push({
-      rowNumber: transportRows.length + 1,
+      rowNumber: Number(numbered[1]),
       startingPoint,
       endingPoint,
       rawOcrLine,
-      reviewNeeded,
+      reviewNeeded: separatorMatches.length > 1 ? "YES" : "NO",
     });
   }
 
