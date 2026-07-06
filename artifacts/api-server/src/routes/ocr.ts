@@ -31,7 +31,20 @@ interface TransportRow {
   endingPoint: string;
   rawOcrLine: string;
   reviewNeeded: "YES" | "NO";
+  correctedFrom?: string;
 }
+
+const placeCorrections = new Map<string, string>([
+  ["east than baram", "East Tambaram"],
+  ["shiram", "Sriram"],
+  ["adavoy", "Adyar"],
+  ["panugudi", "perugudi"],
+  ["koyembedu", "Koyambedu"],
+  ["nugambakkam", "Nungambakkam"],
+  ["mangadu", "Mangadu"],
+  ["rwd", "RWD"],
+  ["5g", "5G"],
+]);
 
 function mostlyNumbers(value: string) {
   const letters = (value.match(/[a-z]/gi) ?? []).length;
@@ -45,6 +58,28 @@ function hasPlaceText(value: string) {
 
 function cleanPoint(value: string) {
   return value.trim().replace(/\s*\(\d+\)\s*$/, "").trim();
+}
+
+function correctPlace(value: string) {
+  let corrected = value;
+  const originals: string[] = [];
+
+  for (const [wrong, right] of placeCorrections) {
+    const pattern = new RegExp(`\\b${wrong.replace(/\s+/g, "\\s+")}\\b`, "gi");
+    corrected = corrected.replace(pattern, (match) => {
+      if (match !== right) originals.push(match);
+      return right;
+    });
+  }
+
+  return { value: corrected, correctedFrom: originals.join(", ") };
+}
+
+function hasSuspiciousOcrWord(value: string) {
+  return value.split(/\s+/).some((word) => {
+    const stripped = word.replace(/[^a-z0-9]/gi, "");
+    return /[a-z]/i.test(stripped) && /\d/.test(stripped) && !/^(5g|rwd)$/i.test(stripped);
+  });
 }
 
 export function parse_transport_data(ocrText: string, sourceFile: string) {
@@ -75,16 +110,21 @@ export function parse_transport_data(ocrText: string, sourceFile: string) {
     const separator = separatorMatches.find((match) => match.index !== 0);
     if (!separator || separator.index === undefined) continue;
 
-    const startingPoint = cleanPoint(body.slice(0, separator.index));
-    const endingPoint = cleanPoint(body.slice(separator.index + separator[0].length));
+    const startCorrection = correctPlace(cleanPoint(body.slice(0, separator.index)));
+    const endCorrection = correctPlace(cleanPoint(body.slice(separator.index + separator[0].length)));
+    const startingPoint = startCorrection.value;
+    const endingPoint = endCorrection.value;
     if (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint)) continue;
 
+    const correctedFrom = [startCorrection.correctedFrom, endCorrection.correctedFrom].filter(Boolean).join("; ");
+    const needsReview = continued || separatorMatches.length > 1 || hasSuspiciousOcrWord(startingPoint) || hasSuspiciousOcrWord(endingPoint);
     transportRows.push({
       rowNumber: Number(numbered[1]),
       startingPoint,
       endingPoint,
       rawOcrLine: combinedRawOcrLine,
-      reviewNeeded: continued || separatorMatches.length > 1 ? "YES" : "NO",
+      reviewNeeded: needsReview ? "YES" : "NO",
+      ...(correctedFrom ? { correctedFrom } : {}),
     });
   }
 

@@ -10,6 +10,7 @@ interface TransportPreviewRow {
   endingPoint: string;
   rawOcrLine: string;
   reviewNeeded: ReviewNeeded;
+  correctedFrom?: string;
 }
 
 interface OcrResult {
@@ -31,6 +32,7 @@ export default function OcrUploadPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [result, setResult] = useState<OcrResult | null>(null);
+  const hasBlankTransportRows = result?.transportRows.some((row) => !row.startingPoint.trim() || !row.endingPoint.trim()) ?? false;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,6 +114,11 @@ export default function OcrUploadPage() {
 
   async function saveTransportRows() {
     if (!result || result.transportRows.length === 0) return;
+    if (hasBlankTransportRows) {
+      setSaveError("Fix blank starting or ending points before saving.");
+      setSaveMessage("");
+      return;
+    }
     setSavingTransport(true);
     setSaveError("");
     setSaveMessage("");
@@ -220,6 +227,7 @@ export default function OcrUploadPage() {
                       <th className="py-2 pr-3 font-semibold">Starting Point</th>
                       <th className="py-2 pr-3 font-semibold">Ending Point</th>
                       <th className="py-2 pr-3 font-semibold">Review Needed</th>
+                      <th className="py-2 pr-3 font-semibold">Raw OCR Line</th>
                       <th className="py-2 font-semibold">Remove</th>
                     </tr>
                   </thead>
@@ -244,6 +252,7 @@ export default function OcrUploadPage() {
                           />
                         </td>
                         <td className="py-2 pr-3">
+                          {row.reviewNeeded === "YES" && <span className="mb-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">Review</span>}
                           <select
                             aria-label={`Review needed for row ${row.rowNumber}`}
                             value={row.reviewNeeded}
@@ -254,6 +263,10 @@ export default function OcrUploadPage() {
                             <option>NO</option>
                           </select>
                         </td>
+                        <td className="py-2 pr-3">
+                          <p className="max-w-64 text-xs text-muted-foreground">{row.rawOcrLine || "-"}</p>
+                          {row.correctedFrom && <p className="mt-1 text-xs text-[#1e3a8a]">Corrected from: {row.correctedFrom}</p>}
+                        </td>
                         <td className="py-2">
                           <button
                             type="button"
@@ -262,7 +275,6 @@ export default function OcrUploadPage() {
                           >
                             Remove
                           </button>
-                          {row.rawOcrLine && <p className="mt-1 max-w-56 truncate text-xs text-muted-foreground" title={row.rawOcrLine}>Raw: {row.rawOcrLine}</p>}
                         </td>
                       </tr>
                     ))}
@@ -280,12 +292,13 @@ export default function OcrUploadPage() {
             <button
               type="button"
               onClick={saveTransportRows}
-              disabled={savingTransport || result.transportRows.length === 0}
+              disabled={savingTransport || result.transportRows.length === 0 || hasBlankTransportRows}
               className="w-full rounded-xl bg-[#1e3a8a] py-3 text-sm font-semibold text-white hover:bg-[#1e3a8a]/90 disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {savingTransport && <Loader2 size={16} className="animate-spin" />}
               {savingTransport ? "Saving..." : "Save Transport Rows"}
             </button>
+            {hasBlankTransportRows && <p className="text-sm text-amber-700">Fix blank starting or ending points before saving.</p>}
             {saveMessage && <p className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">{saveMessage}</p>}
             {saveError && (
               <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">

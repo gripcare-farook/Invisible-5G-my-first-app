@@ -49,9 +49,18 @@ test("OCR transport parser handles wrapped multi-stop route rows", () => {
     result.transportRows.map((row) => [row.rowNumber, row.startingPoint, row.endingPoint, row.reviewNeeded]),
     [
       [24, "5G", "Bolini  Chomompet", "YES"],
-      [26, "5G", "Shiram park63", "NO"],
+      [26, "5G", "Sriram park63", "YES"],
       [32, "5G", "Moyeppevit / Mangadu Ruby Horizon  Kalam", "YES"],
       [34, "Guindy", "5G", "NO"],
     ],
   );
+});
+
+test("OCR transport parser corrects common place OCR mistakes", () => {
+  const result = parse_transport_data("1) 5G -> East than baram", "sample.txt");
+
+  assert.equal(result.transportRows.length, 1);
+  assert.equal(result.transportRows[0].startingPoint, "5G");
+  assert.equal(result.transportRows[0].endingPoint, "East Tambaram");
+  assert.equal(result.transportRows[0].correctedFrom, "East than baram");
 });
