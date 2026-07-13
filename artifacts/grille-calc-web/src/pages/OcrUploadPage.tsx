@@ -23,6 +23,93 @@ interface OcrResult {
   transportRows: TransportPreviewRow[];
 }
 
+const monthPattern = "JANUAR|JANUARY|JAN|FEBRUARY|FEB|MARCH|MAR|APRIL|APR|MAY|JUNE|JUN|JULY|JUL|AUGUST|AUG|SEPTEMBER|SEP|OCTOBER|OCT|NOVEMBER|NOV|DECEMBER|DEC";
+const datePrefixPattern = new RegExp(`^\\s*(\\d{1,2})[-\\s]?(?:${monthPattern})\\b\\s*`, "i");
+
+function mostlyNumbers(value: string) {
+  const letters = (value.match(/[a-z]/gi) ?? []).length;
+  const digits = (value.match(/\d/g) ?? []).length;
+  return digits > 0 && digits > letters;
+}
+
+function hasRouteText(value: string) {
+  return /[a-z]/i.test(value) && !mostlyNumbers(value);
+}
+
+function cleanPoint(value: string) {
+  return value.trim().replace(/\s*\(\d+\)\s*$/, "").trim();
+}
+
+function splitFallbackRouteLine(line: string) {
+  const arrow = /->|→/.exec(line);
+  if (arrow?.index !== undefined) return { index: arrow.index, length: arrow[0].length, usedArrow: true };
+
+  const spaced = /\s{2,}/.exec(line);
+  if (spaced?.index !== undefined) return { index: spaced.index, length: spaced[0].length, usedArrow: false };
+
+  const hyphen = /\s+-\s+/.exec(line);
+  if (hyphen?.index !== undefined && hasRouteText(line.slice(0, hyphen.index)) && hasRouteText(line.slice(hyphen.index + hyphen[0].length))) {
+    return { index: hyphen.index, length: hyphen[0].length, usedArrow: false };
+  }
+
+  return null;
+}
+
+function buildTransportPreviewFallback(ocrText: string): TransportPreviewRow[] {
+  const lines = ocrText.split(/\r?\n/);
+  const rows: TransportPreviewRow[] = [];
+  let rowNumber = 1;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const rawOcrLine = (lines[i] ?? "").trim();
+    if (!rawOcrLine) continue;
+
+    const dated = datePrefixPattern.exec(rawOcrLine);
+    let body = rawOcrLine.replace(datePrefixPattern, "").trim();
+    let rawLine = rawOcrLine;
+    let continued = false;
+
+    if (/(?:->|→)\s*$/.test(body)) {
+      let nextIndex = i + 1;
+      while (nextIndex < lines.length && !(lines[nextIndex] ?? "").trim()) nextIndex += 1;
+      if (nextIndex < lines.length) {
+        const nextLine = (lines[nextIndex] ?? "").trim();
+        body = `${body} ${nextLine}`.trim();
+        rawLine = `${rawLine} ${nextLine}`;
+        continued = true;
+        i = nextIndex;
+      }
+    }
+
+    const split = splitFallbackRouteLine(body);
+    if (!split) continue;
+
+    const startingPoint = cleanPoint(body.slice(0, split.index));
+    const endingPoint = cleanPoint(body.slice(split.index + split.length));
+    if (!hasRouteText(startingPoint) || !hasRouteText(endingPoint)) continue;
+
+    rows.push({
+      rowNumber: dated ? Number(dated[1]) : rowNumber++,
+      startingPoint,
+      endingPoint,
+      rawOcrLine: rawLine,
+      reviewNeeded: continued || (split.usedArrow && /->|→/.test(endingPoint)) || (!split.usedArrow && /\s{2,}/.test(endingPoint)) ? "YES" : "NO",
+    });
+  }
+
+  return rows;
+}
+
+function withTransportPreviewFallback(data: OcrResult): OcrResult {
+  if (data.documentType !== "Transport Data" || data.transportRows.length > 0) return data;
+  const transportRows = buildTransportPreviewFallback(data.ocrText);
+  return {
+    ...data,
+    transportRows,
+    reviewNeededCount: transportRows.filter((row) => row.reviewNeeded === "YES").length,
+  };
+}
+
 export default function OcrUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<DocumentType>("Auto Detect");
@@ -59,7 +146,7 @@ export default function OcrUploadPage() {
       });
       const data = (await response.json()) as OcrResult | { success: false; message?: string };
       if (!response.ok || !data.success) throw new Error("message" in data ? data.message : "OCR processing failed.");
-      setResult(data);
+      setResult(withTransportPreviewFallback(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : "OCR processing failed.");
     } finally {
