@@ -55,45 +55,31 @@ function splitFallbackRouteLine(line: string) {
   return null;
 }
 
-function buildTransportPreviewFallback(ocrText: string): TransportPreviewRow[] {
-  const lines = ocrText.split(/\r?\n/);
+function buildFullTransportPreviewRows(ocrText: string): TransportPreviewRow[] {
   const rows: TransportPreviewRow[] = [];
   let rowNumber = 1;
 
-  for (let i = 0; i < lines.length; i += 1) {
-    const rawOcrLine = (lines[i] ?? "").trim();
+  for (const line of ocrText.split(/\r?\n/)) {
+    const rawOcrLine = line.trim();
     if (!rawOcrLine) continue;
 
     const dated = datePrefixPattern.exec(rawOcrLine);
-    let body = rawOcrLine.replace(datePrefixPattern, "").trim();
-    let rawLine = rawOcrLine;
-    let continued = false;
-
-    if (/(?:->|→)\s*$/.test(body)) {
-      let nextIndex = i + 1;
-      while (nextIndex < lines.length && !(lines[nextIndex] ?? "").trim()) nextIndex += 1;
-      if (nextIndex < lines.length) {
-        const nextLine = (lines[nextIndex] ?? "").trim();
-        body = `${body} ${nextLine}`.trim();
-        rawLine = `${rawLine} ${nextLine}`;
-        continued = true;
-        i = nextIndex;
-      }
-    }
-
+    const body = rawOcrLine.replace(datePrefixPattern, "").trim();
     const split = splitFallbackRouteLine(body);
     if (!split) continue;
 
     const startingPoint = cleanPoint(body.slice(0, split.index));
     const endingPoint = cleanPoint(body.slice(split.index + split.length));
-    if (!hasRouteText(startingPoint) || !hasRouteText(endingPoint)) continue;
+    if (!split.usedArrow && (!hasRouteText(startingPoint) || !hasRouteText(endingPoint))) continue;
 
     rows.push({
       rowNumber: dated ? Number(dated[1]) : rowNumber++,
       startingPoint,
       endingPoint,
-      rawOcrLine: rawLine,
-      reviewNeeded: continued || (split.usedArrow && /->|→/.test(endingPoint)) || (!split.usedArrow && /\s{2,}/.test(endingPoint)) ? "YES" : "NO",
+      rawOcrLine,
+      reviewNeeded: split.usedArrow
+        ? !startingPoint || !endingPoint || /->|\u2192/.test(endingPoint) ? "YES" : "NO"
+        : /\s{2,}/.test(endingPoint) ? "YES" : "NO",
     });
   }
 
@@ -102,7 +88,7 @@ function buildTransportPreviewFallback(ocrText: string): TransportPreviewRow[] {
 
 function withTransportPreviewFallback(data: OcrResult): OcrResult {
   if (data.documentType !== "Transport Data" || data.transportRows.length > 0) return data;
-  const transportRows = buildTransportPreviewFallback(data.ocrText);
+  const transportRows = buildFullTransportPreviewRows(data.ocrText);
   return {
     ...data,
     transportRows,

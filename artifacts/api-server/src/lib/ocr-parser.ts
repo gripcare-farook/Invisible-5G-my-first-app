@@ -121,43 +121,47 @@ export function parse_transport_data(ocrText: string, sourceFile: string) {
   };
 }
 
-function parse_transport_arrow_fallback(ocrText: string) {
+function splitPreviewRouteLine(line: string) {
+  const arrow = /->|→/.exec(line);
+  if (arrow?.index !== undefined) return { index: arrow.index, length: arrow[0].length, usedArrow: true };
+
+  const spaced = /\s{2,}/.exec(line);
+  if (spaced?.index !== undefined) return { index: spaced.index, length: spaced[0].length, usedArrow: false };
+
+  const hyphen = /\s+-\s+/.exec(line);
+  if (hyphen?.index !== undefined && hasPlaceText(line.slice(0, hyphen.index)) && hasPlaceText(line.slice(hyphen.index + hyphen[0].length))) {
+    return { index: hyphen.index, length: hyphen[0].length, usedArrow: false };
+  }
+
+  return null;
+}
+
+function parse_transport_preview_rows(ocrText: string) {
   const lines = ocrText.split(/\r?\n/);
   const transportRows: TransportRow[] = [];
   let fallbackRowNumber = 1;
 
   for (let i = 0; i < lines.length; i += 1) {
     const rawOcrLine = (lines[i] ?? "").trim();
-    if (!rawOcrLine.includes("->")) continue;
+    if (!rawOcrLine) continue;
 
     const dated = datePrefixPattern.exec(rawOcrLine);
     let body = stripDatePrefix(rawOcrLine);
-    let combinedRawOcrLine = rawOcrLine;
-    let continued = false;
+    const split = splitPreviewRouteLine(body);
+    if (!split) continue;
 
-    if (/->\s*$/.test(body)) {
-      let nextIndex = i + 1;
-      while (nextIndex < lines.length && !(lines[nextIndex] ?? "").trim()) nextIndex += 1;
-      if (nextIndex < lines.length) {
-        const nextLine = (lines[nextIndex] ?? "").trim();
-        body = `${body} ${nextLine}`.trim();
-        combinedRawOcrLine = `${combinedRawOcrLine} ${nextLine}`;
-        continued = true;
-        i = nextIndex;
-      }
-    }
-
-    const arrowIndex = body.indexOf("->");
-    const startingPoint = cleanPoint(body.slice(0, arrowIndex));
-    const endingPoint = cleanPoint(body.slice(arrowIndex + 2));
-    if (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint)) continue;
+    const startingPoint = cleanPoint(body.slice(0, split.index));
+    const endingPoint = cleanPoint(body.slice(split.index + split.length));
+    if (!split.usedArrow && (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint))) continue;
 
     transportRows.push({
       rowNumber: dated ? Number(dated[1]) : fallbackRowNumber++,
       startingPoint,
       endingPoint,
-      rawOcrLine: combinedRawOcrLine,
-      reviewNeeded: continued || endingPoint.includes("->") ? "YES" : "NO",
+      rawOcrLine,
+      reviewNeeded: split.usedArrow
+        ? !startingPoint || !endingPoint || /->|→/.test(endingPoint) ? "YES" : "NO"
+        : /\s{2,}/.test(endingPoint) ? "YES" : "NO",
     });
   }
 
@@ -168,7 +172,6 @@ function parse_transport_arrow_fallback(ocrText: string) {
 }
 
 export function parse_transport_preview_data(ocrText: string, sourceFile: string, documentType: string) {
-  const parsed = parse_transport_data(ocrText, sourceFile);
-  if (documentType !== "Transport Data" || parsed.transportRows.length > 0 || !ocrText.includes("->")) return parsed;
-  return parse_transport_arrow_fallback(ocrText);
+  if (documentType === "Transport Data") return parse_transport_preview_rows(ocrText);
+  return parse_transport_data(ocrText, sourceFile);
 }
