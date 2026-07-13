@@ -114,3 +114,29 @@ Madawaram
     ],
   );
 });
+
+test("OCR transport preview treats handwritten 5G misread as 56 in auto detect", () => {
+  const sample = `
+56  CG Fetus
+56  Adahyou
+56  Palutinipattu
+56  RUD
+56  Venkampakken
+56  Padappal
+`;
+
+  const result = parse_transport_preview_data(sample, "sample.txt", "Auto Detect");
+
+  assert.equal(result.transportRows.length, 6);
+  assert.deepEqual(
+    result.transportRows.map((row) => [row.startingPoint, row.endingPoint, row.reviewNeeded, row.rawOcrLine]),
+    [
+      ["5G", "CG Fetus", "YES", "56  CG Fetus"],
+      ["5G", "Adahyou", "YES", "56  Adahyou"],
+      ["5G", "Palutinipattu", "YES", "56  Palutinipattu"],
+      ["5G", "RUD", "YES", "56  RUD"],
+      ["5G", "Venkampakken", "YES", "56  Venkampakken"],
+      ["5G", "Padappal", "YES", "56  Padappal"],
+    ],
+  );
+});

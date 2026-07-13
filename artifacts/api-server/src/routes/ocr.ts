@@ -189,11 +189,12 @@ router.post("/ocr/upload", async (req, res) => {
     const documentUrl = await getSignedUrl(fileId, apiKey);
     const { ocrText, pageCount } = await runOcr(documentUrl, apiKey);
     const { transportRows, reviewNeededCount } = parse_transport_preview_data(ocrText, file.filename, documentType);
+    const detectedDocumentType = documentType === "Auto Detect" && transportRows.some((row) => /^56\b/.test(row.rawOcrLine)) ? "Transport Data" : documentType;
 
     res.json({
       success: true,
       sourceFile: file.filename,
-      documentType,
+      documentType: detectedDocumentType,
       ocrText,
       pageCount,
       transportRows,

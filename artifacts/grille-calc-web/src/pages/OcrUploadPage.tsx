@@ -40,6 +40,10 @@ function cleanPoint(value: string) {
   return value.trim().replace(/\s*\(\d+\)\s*$/, "").trim();
 }
 
+function correctTransportStart(value: string) {
+  return value === "56" ? { value: "5G", corrected: true } : { value, corrected: false };
+}
+
 function splitFallbackRouteLine(line: string) {
   const arrow = /->|→/.exec(line);
   if (arrow?.index !== undefined) return { index: arrow.index, length: arrow[0].length, usedArrow: true };
@@ -68,18 +72,20 @@ function buildFullTransportPreviewRows(ocrText: string): TransportPreviewRow[] {
     const split = splitFallbackRouteLine(body);
     if (!split) continue;
 
-    const startingPoint = cleanPoint(body.slice(0, split.index));
+    const startCorrection = correctTransportStart(cleanPoint(body.slice(0, split.index)));
+    const startingPoint = startCorrection.value;
     const endingPoint = cleanPoint(body.slice(split.index + split.length));
     if (!split.usedArrow && (!hasRouteText(startingPoint) || !hasRouteText(endingPoint))) continue;
+    const reviewNeeded = startCorrection.corrected || (split.usedArrow
+      ? !startingPoint || !endingPoint || /->|\u2192/.test(endingPoint)
+      : /\s{2,}/.test(endingPoint));
 
     rows.push({
       rowNumber: dated ? Number(dated[1]) : rowNumber++,
       startingPoint,
       endingPoint,
       rawOcrLine,
-      reviewNeeded: split.usedArrow
-        ? !startingPoint || !endingPoint || /->|\u2192/.test(endingPoint) ? "YES" : "NO"
-        : /\s{2,}/.test(endingPoint) ? "YES" : "NO",
+      reviewNeeded: reviewNeeded ? "YES" : "NO",
     });
   }
 
@@ -87,7 +93,8 @@ function buildFullTransportPreviewRows(ocrText: string): TransportPreviewRow[] {
 }
 
 function withTransportPreviewFallback(data: OcrResult): OcrResult {
-  if (data.documentType !== "Transport Data" || data.transportRows.length > 0) return data;
+  const shouldFallback = data.documentType === "Transport Data" || (data.documentType === "Auto Detect" && /^56\b/m.test(data.ocrText));
+  if (!shouldFallback || data.transportRows.length > 0) return data;
   const transportRows = buildFullTransportPreviewRows(data.ocrText);
   return {
     ...data,

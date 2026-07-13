@@ -136,6 +136,10 @@ function splitPreviewRouteLine(line: string) {
   return null;
 }
 
+function correctTransportStart(value: string) {
+  return value === "56" ? { value: "5G", corrected: true } : { value, corrected: false };
+}
+
 function parse_transport_preview_rows(ocrText: string) {
   const lines = ocrText.split(/\r?\n/);
   const transportRows: TransportRow[] = [];
@@ -150,18 +154,20 @@ function parse_transport_preview_rows(ocrText: string) {
     const split = splitPreviewRouteLine(body);
     if (!split) continue;
 
-    const startingPoint = cleanPoint(body.slice(0, split.index));
+    const startCorrection = correctTransportStart(cleanPoint(body.slice(0, split.index)));
+    const startingPoint = startCorrection.value;
     const endingPoint = cleanPoint(body.slice(split.index + split.length));
     if (!split.usedArrow && (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint))) continue;
+    const reviewNeeded = startCorrection.corrected || (split.usedArrow
+      ? !startingPoint || !endingPoint || /->|â†’/.test(endingPoint)
+      : /\s{2,}/.test(endingPoint));
 
     transportRows.push({
       rowNumber: dated ? Number(dated[1]) : fallbackRowNumber++,
       startingPoint,
       endingPoint,
       rawOcrLine,
-      reviewNeeded: split.usedArrow
-        ? !startingPoint || !endingPoint || /->|→/.test(endingPoint) ? "YES" : "NO"
-        : /\s{2,}/.test(endingPoint) ? "YES" : "NO",
+      reviewNeeded: reviewNeeded ? "YES" : "NO",
     });
   }
 
@@ -173,5 +179,7 @@ function parse_transport_preview_rows(ocrText: string) {
 
 export function parse_transport_preview_data(ocrText: string, sourceFile: string, documentType: string) {
   if (documentType === "Transport Data") return parse_transport_preview_rows(ocrText);
+  const preview = parse_transport_preview_rows(ocrText);
+  if (documentType === "Auto Detect" && preview.transportRows.some((row) => /^56\b/.test(row.rawOcrLine))) return preview;
   return parse_transport_data(ocrText, sourceFile);
 }
