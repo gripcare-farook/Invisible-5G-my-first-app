@@ -19,6 +19,9 @@ const placeCorrections = new Map<string, string>([
   ["5g", "5G"],
 ]);
 
+const monthPattern = "JANUAR|JANUARY|JAN|FEBRUARY|FEB|MARCH|MAR|APRIL|APR|MAY|JUNE|JUN|JULY|JUL|AUGUST|AUG|SEPTEMBER|SEP|OCTOBER|OCT|NOVEMBER|NOV|DECEMBER|DEC";
+const datePrefixPattern = new RegExp(`^\\s*(\\d{1,2})[-\\s]?(?:${monthPattern})\\b\\s*`, "i");
+
 function mostlyNumbers(value: string) {
   const letters = (value.match(/[a-z]/gi) ?? []).length;
   const digits = (value.match(/\d/g) ?? []).length;
@@ -56,7 +59,7 @@ function hasSuspiciousOcrWord(value: string) {
 }
 
 function stripDatePrefix(value: string) {
-  return value.replace(/^\s*\d{1,2}[-\s]?(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b\s*/i, "").trim();
+  return value.replace(datePrefixPattern, "").trim();
 }
 
 export function parse_transport_data(ocrText: string, sourceFile: string) {
@@ -73,7 +76,7 @@ export function parse_transport_data(ocrText: string, sourceFile: string) {
     if (!rawOcrLine) continue;
 
     const numbered = /^(\d+)[).]\s*(.+)$/.exec(rawOcrLine);
-    const dated = /^(\d{1,2})[-\s]?(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/i.exec(rawOcrLine);
+    const dated = datePrefixPattern.exec(rawOcrLine);
     const rowNumber = numbered ? Number(numbered[1]) : dated ? Number(dated[1]) : fallbackRowNumber++;
     const allowLooseSeparators = Boolean(numbered);
 
@@ -89,7 +92,8 @@ export function parse_transport_data(ocrText: string, sourceFile: string) {
       i += 1;
     }
 
-    const separatorMatches = [...body.matchAll(/\s*(->|→|,|-|\bto\b|\bTO\b|\s{2,})\s*/g)];
+    const arrowMatches = [...body.matchAll(/->/g)];
+    const separatorMatches = body.includes("->") ? arrowMatches : [...body.matchAll(/\s*(→|,|-|\bto\b|\bTO\b|\s{2,})\s*/g)];
     const separator = separatorMatches.find((match) => match.index !== 0);
     if (!separator || separator.index === undefined) continue;
 

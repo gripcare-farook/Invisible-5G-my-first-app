@@ -91,3 +91,34 @@ MadanVanam 135
     ],
   );
 });
+
+test("OCR transport parser accepts unnumbered sample transport arrow routes", () => {
+  const sample = `
+Ceroonpet -> 5G
+5G -> Park 63 -> Navaloy Hiranoban
+21-DEC 5G -> Hiranandani -> Penuguli
+23-DEC 5G -> Nulanbow
+5G -> Nava Hiranoban (100)
+5G -> Mangarodut -> Pura sanbak leum (100)
+3-Januar 5G -> Park 63
+5G -> Pura vanagaram ->
+Madawaram
+`;
+
+  const result = parse_transport_data(sample, "sample.txt");
+
+  assert.equal(result.transportRows.length, 8);
+  assert.deepEqual(
+    result.transportRows.map((row) => [row.startingPoint, row.endingPoint, row.reviewNeeded]),
+    [
+      ["Ceroonpet", "5G", "NO"],
+      ["5G", "Park 63 -> Navaloy Hiranoban", "YES"],
+      ["5G", "Hiranandani -> Penuguli", "YES"],
+      ["5G", "Nulanbow", "NO"],
+      ["5G", "Nava Hiranoban", "NO"],
+      ["5G", "Mangarodut -> Pura sanbak leum", "YES"],
+      ["5G", "Park 63", "NO"],
+      ["5G", "Pura vanagaram -> Madawaram", "YES"],
+    ],
+  );
+});
