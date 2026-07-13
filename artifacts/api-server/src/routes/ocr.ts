@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { logger } from "../lib/logger";
-import { parse_transport_data } from "../lib/ocr-parser";
+import { parse_transport_preview_data } from "../lib/ocr-parser";
 
 const router: IRouter = Router();
 const allowedExtensions = new Set([".jpg", ".jpeg", ".png", ".pdf"]);
@@ -188,7 +188,7 @@ router.post("/ocr/upload", async (req, res) => {
     const fileId = await uploadToMistral(file, apiKey);
     const documentUrl = await getSignedUrl(fileId, apiKey);
     const { ocrText, pageCount } = await runOcr(documentUrl, apiKey);
-    const { transportRows, reviewNeededCount } = parse_transport_data(ocrText, file.filename);
+    const { transportRows, reviewNeededCount } = parse_transport_preview_data(ocrText, file.filename, documentType);
 
     res.json({
       success: true,

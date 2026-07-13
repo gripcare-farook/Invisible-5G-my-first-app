@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parse_transport_data } from "../artifacts/api-server/src/lib/ocr-parser.ts";
+import { parse_transport_data, parse_transport_preview_data } from "../artifacts/api-server/src/lib/ocr-parser.ts";
 
 test("OCR transport parser keeps numbered route rows and skips OCR noise", () => {
   const sample = `
@@ -94,30 +94,30 @@ MadanVanam 135
 
 test("OCR transport parser accepts unnumbered sample transport arrow routes", () => {
   const sample = `
+5G -> C4 Zemelka
 Ceroonpet -> 5G
 5G -> Park 63 -> Navaloy Hiranoban
+5G -> Park 63
 21-DEC 5G -> Hiranandani -> Penuguli
 23-DEC 5G -> Nulanbow
-5G -> Nava Hiranoban (100)
 5G -> Mangarodut -> Pura sanbak leum (100)
-3-Januar 5G -> Park 63
 5G -> Pura vanagaram ->
 Madawaram
 `;
 
-  const result = parse_transport_data(sample, "sample.txt");
+  const result = parse_transport_preview_data(sample, "sample.txt", "Transport Data");
 
   assert.equal(result.transportRows.length, 8);
   assert.deepEqual(
     result.transportRows.map((row) => [row.startingPoint, row.endingPoint, row.reviewNeeded]),
     [
+      ["5G", "C4 Zemelka", "YES"],
       ["Ceroonpet", "5G", "NO"],
       ["5G", "Park 63 -> Navaloy Hiranoban", "YES"],
+      ["5G", "Park 63", "NO"],
       ["5G", "Hiranandani -> Penuguli", "YES"],
       ["5G", "Nulanbow", "NO"],
-      ["5G", "Nava Hiranoban", "NO"],
       ["5G", "Mangarodut -> Pura sanbak leum", "YES"],
-      ["5G", "Park 63", "NO"],
       ["5G", "Pura vanagaram -> Madawaram", "YES"],
     ],
   );

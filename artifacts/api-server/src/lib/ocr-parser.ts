@@ -120,3 +120,55 @@ export function parse_transport_data(ocrText: string, sourceFile: string) {
     reviewNeededCount: transportRows.filter((row) => row.reviewNeeded === "YES").length,
   };
 }
+
+function parse_transport_arrow_fallback(ocrText: string) {
+  const lines = ocrText.split(/\r?\n/);
+  const transportRows: TransportRow[] = [];
+  let fallbackRowNumber = 1;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const rawOcrLine = (lines[i] ?? "").trim();
+    if (!rawOcrLine.includes("->")) continue;
+
+    const dated = datePrefixPattern.exec(rawOcrLine);
+    let body = stripDatePrefix(rawOcrLine);
+    let combinedRawOcrLine = rawOcrLine;
+    let continued = false;
+
+    if (/->\s*$/.test(body)) {
+      let nextIndex = i + 1;
+      while (nextIndex < lines.length && !(lines[nextIndex] ?? "").trim()) nextIndex += 1;
+      if (nextIndex < lines.length) {
+        const nextLine = (lines[nextIndex] ?? "").trim();
+        body = `${body} ${nextLine}`.trim();
+        combinedRawOcrLine = `${combinedRawOcrLine} ${nextLine}`;
+        continued = true;
+        i = nextIndex;
+      }
+    }
+
+    const arrowIndex = body.indexOf("->");
+    const startingPoint = cleanPoint(body.slice(0, arrowIndex));
+    const endingPoint = cleanPoint(body.slice(arrowIndex + 2));
+    if (!hasPlaceText(startingPoint) || !hasPlaceText(endingPoint)) continue;
+
+    transportRows.push({
+      rowNumber: dated ? Number(dated[1]) : fallbackRowNumber++,
+      startingPoint,
+      endingPoint,
+      rawOcrLine: combinedRawOcrLine,
+      reviewNeeded: continued || endingPoint.includes("->") ? "YES" : "NO",
+    });
+  }
+
+  return {
+    transportRows,
+    reviewNeededCount: transportRows.filter((row) => row.reviewNeeded === "YES").length,
+  };
+}
+
+export function parse_transport_preview_data(ocrText: string, sourceFile: string, documentType: string) {
+  const parsed = parse_transport_data(ocrText, sourceFile);
+  if (documentType !== "Transport Data" || parsed.transportRows.length > 0 || !ocrText.includes("->")) return parsed;
+  return parse_transport_arrow_fallback(ocrText);
+}
