@@ -119,7 +119,9 @@ export default function OcrUploadPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [result, setResult] = useState<OcrResult | null>(null);
-  const hasBlankTransportRows = result?.transportRows.some((row) => !row.startingPoint.trim() || !row.endingPoint.trim()) ?? false;
+  const [transportRows, setTransportRows] = useState<TransportPreviewRow[]>([]);
+  const hasBlankTransportRows = transportRows.some((row) => !row.startingPoint.trim() || !row.endingPoint.trim());
+  const reviewNeededCount = transportRows.filter((row) => row.reviewNeeded === "YES").length;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -133,6 +135,7 @@ export default function OcrUploadPage() {
     setSaveError("");
     setSaveMessage("");
     setResult(null);
+    setTransportRows([]);
 
     const body = new FormData();
     body.append("file", file);
@@ -146,7 +149,9 @@ export default function OcrUploadPage() {
       });
       const data = (await response.json()) as OcrResult | { success: false; message?: string };
       if (!response.ok || !data.success) throw new Error("message" in data ? data.message : "OCR processing failed.");
-      setResult(withTransportPreviewFallback(data));
+      const nextResult = withTransportPreviewFallback(data);
+      setResult(nextResult);
+      setTransportRows(nextResult.transportRows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "OCR processing failed.");
     } finally {
@@ -157,50 +162,29 @@ export default function OcrUploadPage() {
   function updateRow(index: number, patch: Partial<TransportPreviewRow>) {
     setSaveError("");
     setSaveMessage("");
-    setResult((current) => {
-      if (!current) return current;
-      const transportRows = current.transportRows.map((row, i) => (i === index ? { ...row, ...patch } : row));
-      return {
-        ...current,
-        transportRows,
-        reviewNeededCount: transportRows.filter((row) => row.reviewNeeded === "YES").length,
-      };
-    });
+    setTransportRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
   function removeRow(index: number) {
     setSaveError("");
     setSaveMessage("");
-    setResult((current) => {
-      if (!current) return current;
-      const transportRows = current.transportRows.filter((_, i) => i !== index);
-      return {
-        ...current,
-        transportRows,
-        reviewNeededCount: transportRows.filter((row) => row.reviewNeeded === "YES").length,
-      };
-    });
+    setTransportRows((current) => current.filter((_, i) => i !== index));
   }
 
   function addRow() {
     setSaveError("");
     setSaveMessage("");
-    setResult((current) => {
-      if (!current) return current;
-      const nextNumber = Math.max(0, ...current.transportRows.map((row) => row.rowNumber)) + 1;
-      return {
+    setTransportRows((current) => {
+      const nextNumber = Math.max(0, ...current.map((row) => row.rowNumber)) + 1;
+      return [
         ...current,
-        reviewNeededCount: current.reviewNeededCount + 1,
-        transportRows: [
-          ...current.transportRows,
-          { rowNumber: nextNumber, startingPoint: "", endingPoint: "", rawOcrLine: "", reviewNeeded: "YES" },
-        ],
-      };
+        { rowNumber: nextNumber, startingPoint: "", endingPoint: "", rawOcrLine: "", reviewNeeded: "YES" },
+      ];
     });
   }
 
   async function saveTransportRows() {
-    if (!result || result.transportRows.length === 0) return;
+    if (!result || transportRows.length === 0) return;
     if (hasBlankTransportRows) {
       setSaveError("Fix blank starting or ending points before saving.");
       setSaveMessage("");
@@ -215,7 +199,7 @@ export default function OcrUploadPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceFile: result.sourceFile, rows: result.transportRows }),
+        body: JSON.stringify({ sourceFile: result.sourceFile, rows: transportRows }),
       });
       const data = (await response.json()) as { success: true; rowsAdded: number } | { success: false; message?: string };
       if (!response.ok || !data.success) throw new Error("message" in data ? data.message : "Could not save transport rows.");
@@ -300,12 +284,12 @@ export default function OcrUploadPage() {
           <section className="bg-white rounded-2xl border border-border p-4 space-y-3">
             <div>
               <h2 className="font-semibold text-sm text-[#1e3a8a]">Transport Preview</h2>
-              <p className="text-xs text-muted-foreground">{result.reviewNeededCount} row{result.reviewNeededCount === 1 ? "" : "s"} need review</p>
+              <p className="text-xs text-muted-foreground">{reviewNeededCount} row{reviewNeededCount === 1 ? "" : "s"} need review</p>
             </div>
-            {result.transportRows.length === 0 && (
+            {transportRows.length === 0 && (
               <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">No transport route rows detected.</p>
             )}
-            {result.transportRows.length > 0 && (
+            {transportRows.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[700px] text-left text-sm">
                   <thead className="text-xs uppercase text-muted-foreground">
@@ -319,7 +303,7 @@ export default function OcrUploadPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {result.transportRows.map((row, index) => (
+                    {transportRows.map((row, index) => (
                       <tr key={`${row.rowNumber}-${index}`} className="border-b border-border last:border-0 align-top">
                         <td className="py-2 pr-3 font-medium">{row.rowNumber}</td>
                         <td className="py-2 pr-3">
@@ -379,7 +363,7 @@ export default function OcrUploadPage() {
             <button
               type="button"
               onClick={saveTransportRows}
-              disabled={savingTransport || result.transportRows.length === 0 || hasBlankTransportRows}
+              disabled={savingTransport || transportRows.length === 0 || hasBlankTransportRows}
               className="w-full rounded-xl bg-[#1e3a8a] py-3 text-sm font-semibold text-white hover:bg-[#1e3a8a]/90 disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {savingTransport && <Loader2 size={16} className="animate-spin" />}
