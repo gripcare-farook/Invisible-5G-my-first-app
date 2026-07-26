@@ -9,38 +9,59 @@ interface SeedUser {
   email: string;
   name: string;
   role: UserRole;
-  passwordHash: string;
 }
 
-async function upsertUser(u: SeedUser): Promise<void> {
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, u.email)).limit(1);
-  if (existing.length > 0) {
-    await db.update(usersTable).set({ name: u.name, role: u.role, passwordHash: u.passwordHash, isActive: true }).where(eq(usersTable.email, u.email));
-    logger.info({ email: u.email }, "seed: updated user");
-  } else {
-    await db.insert(usersTable).values({ email: u.email, name: u.name, role: u.role, passwordHash: u.passwordHash, isActive: true });
-    logger.info({ email: u.email }, "seed: created user");
-  }
-}
-
-const STATIC_USERS: Array<{ email: string; name: string; role: UserRole; password: string }> = [
-  { email: "8122676635", name: "Javith Bai",  role: "transport",          password: "admin" },
-  { email: "9087177507", name: "Pallavan",     role: "labour_contractor",  password: "admin" },
-  { email: "7397271927", name: "Naresh",       role: "labour_worker",      password: "admin" },
+const STATIC_USERS: SeedUser[] = [
+  { email: "8122676635", name: "Javith Bai", role: "transport" },
+  { email: "9087177507", name: "Pallavan", role: "labour_contractor" },
+  { email: "7397271927", name: "Naresh", role: "labour_worker" },
 ];
 
 export async function seedUsers(): Promise<void> {
-  const adminEmail = process.env["ADMIN_EMAIL"];
-  const adminPasswordHash = process.env["ADMIN_PASSWORD_HASH"];
+  let created = 0;
+  let updated = 0;
+  const adminEmail = process.env["ADMIN_EMAIL"]?.toLowerCase().trim();
   const adminPassword = process.env["ADMIN_PASSWORD"];
 
-  if (adminEmail && (adminPasswordHash || adminPassword)) {
-    const hash = adminPasswordHash ?? (await bcrypt.hash(adminPassword!, 12));
-    await upsertUser({ email: adminEmail.toLowerCase().trim(), name: "Admin", role: "admin", passwordHash: hash });
+  if (adminEmail && adminPassword) {
+    const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, adminEmail)).limit(1);
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+    await db
+      .insert(usersTable)
+      .values({ email: adminEmail, name: "Admin", role: "admin", passwordHash, isActive: true })
+      .onConflictDoUpdate({
+        target: usersTable.email,
+        set: { name: "Admin", role: "admin", passwordHash, isActive: true },
+      });
+    existing.length ? updated++ : created++;
   }
 
   for (const u of STATIC_USERS) {
-    const hash = await bcrypt.hash(u.password, 10);
-    await upsertUser({ email: u.email, name: u.name, role: u.role, passwordHash: hash });
+    const existing = await db
+      .select({ id: usersTable.id, passwordHash: usersTable.passwordHash })
+      .from(usersTable)
+      .where(eq(usersTable.email, u.email))
+      .limit(1);
+    if (existing.length) {
+      await db
+        .update(usersTable)
+        .set({
+          name: u.name,
+          role: u.role,
+          isActive: true,
+          ...(!existing[0]!.passwordHash && { passwordHash: await bcrypt.hash("admin", 10) }),
+        })
+        .where(eq(usersTable.email, u.email));
+      updated++;
+    } else {
+      await db.insert(usersTable).values({
+        ...u,
+        passwordHash: await bcrypt.hash("admin", 10),
+        isActive: true,
+      });
+      created++;
+    }
   }
+
+  logger.info({ created, updated }, "seed: users ensured");
 }

@@ -11,6 +11,7 @@ router.post("/auth/login", async (req, res) => {
     const { email, password } = req.body as { email?: string; password?: string };
 
     if (!email || !password) {
+      logger.warn({ reason: "missing_credentials" }, "auth: login rejected");
       res.status(400).json({ success: false, message: "Email and password are required." });
       return;
     }
@@ -18,6 +19,7 @@ router.post("/auth/login", async (req, res) => {
     const users = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
 
     if (users.length === 0) {
+      logger.warn({ reason: "user_not_found" }, "auth: login rejected");
       res.status(401).json({ success: false, message: "Invalid email or password." });
       return;
     }
@@ -25,12 +27,20 @@ router.post("/auth/login", async (req, res) => {
     const user = users[0]!;
 
     if (!user.isActive) {
+      logger.warn({ userId: user.id, reason: "inactive" }, "auth: login rejected");
       res.status(401).json({ success: false, message: "Account is disabled." });
+      return;
+    }
+
+    if (!user.passwordHash) {
+      logger.error({ userId: user.id, reason: "missing_password_hash" }, "auth: login rejected");
+      res.status(401).json({ success: false, message: "Invalid email or password." });
       return;
     }
 
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) {
+      logger.warn({ userId: user.id, reason: "password_mismatch" }, "auth: login rejected");
       res.status(401).json({ success: false, message: "Invalid email or password." });
       return;
     }

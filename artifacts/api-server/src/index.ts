@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seedUsers } from "./lib/seed";
+import { ensureDatabaseSchema } from "./lib/schema";
 
 const rawPort = process.env["PORT"];
 
@@ -14,6 +16,9 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+await ensureDatabaseSchema();
+await seedUsers();
 
 app.listen(port, (err) => {
   if (err) {
