@@ -67,7 +67,7 @@ function respond(success, message) {
 // ─── Projects sheet ──────────────────────────────────────────────────────────
 
 var PROJECTS_HEADERS = [
-  "saved_at", "project_id", "project_name", "client_name", "site_location",
+  "saved_at", "project_id", "project_name", "client_name", "Mobile Number", "site_location",
   "openings_count", "total_sqft", "total_rope_lines", "total_rope_meters",
   "total_channel_feet", "total_channel_pcs", "total_fasteners", "total_stiffner_meters",
   "labour_cost", "shipping_cost", "misc_cost", "total_cost", "cost_per_sqft",
@@ -77,36 +77,40 @@ var PROJECTS_HEADERS = [
 
 function saveToProjects(ss, data) {
   var sheet = getOrCreateSheet(ss, "Projects", PROJECTS_HEADERS);
+  var headers = ensureProjectMobileHeader(sheet);
+  var values = {
+    saved_at: data.savedAt, project_id: data.projectId, project_name: data.projectName,
+    client_name: data.clientName || "", "Mobile Number": data.mobileNumber || "",
+    site_location: data.siteLocation || "", openings_count: data.openingsCount,
+    total_sqft: data.totalSqft, total_rope_lines: data.totalRopeLines,
+    total_rope_meters: data.totalRopeMeters, total_channel_feet: data.totalChannelFeet,
+    total_channel_pcs: data.totalChannelPcs, total_fasteners: data.totalFasteners,
+    total_stiffner_meters: data.totalStiffnerMeters, labour_cost: data.labourCost,
+    shipping_cost: data.shippingCost, misc_cost: data.miscCost, total_cost: data.totalCost,
+    cost_per_sqft: data.costPerSqft, selling_price: data.sellingPrice,
+    recommended_selling_price: data.recommendedSellingPrice, total_profit: data.totalProfit,
+    profit_per_sqft: data.profitPerSqft, stock_sync_status: "synced",
+    stock_sync_message: "Stock deducted successfully", notes: data.notes || ""
+  };
+  var row = headers.map(function (header) {
+    return Object.prototype.hasOwnProperty.call(values, header) ? values[header] : "";
+  });
+  var nextRow = sheet.getLastRow() + 1;
+  sheet.getRange(nextRow, headers.indexOf("Mobile Number") + 1).setNumberFormat("@");
+  sheet.getRange(nextRow, 1, 1, row.length).setValues([row]);
+}
 
-  var row = [
-    data.savedAt,
-    data.projectId,
-    data.projectName,
-    data.clientName || "",
-    data.siteLocation || "",
-    data.openingsCount,
-    data.totalSqft,
-    data.totalRopeLines,
-    data.totalRopeMeters,
-    data.totalChannelFeet,
-    data.totalChannelPcs,
-    data.totalFasteners,
-    data.totalStiffnerMeters,
-    data.labourCost,
-    data.shippingCost,
-    data.miscCost,
-    data.totalCost,
-    data.costPerSqft,
-    data.sellingPrice,
-    data.recommendedSellingPrice,
-    data.totalProfit,
-    data.profitPerSqft,
-    "synced",
-    "Stock deducted successfully",
-    data.notes || ""
-  ];
-
-  sheet.appendRow(row);
+function ensureProjectMobileHeader(sheet) {
+  var lastColumn = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0];
+  if (headers.indexOf("Mobile Number") < 0) {
+    var clientNameColumn = headers.indexOf("client_name") + 1;
+    if (clientNameColumn < 1) throw new Error("Projects sheet is missing client_name.");
+    sheet.insertColumnAfter(clientNameColumn);
+    sheet.getRange(1, clientNameColumn + 1).setValue("Mobile Number");
+    headers.splice(clientNameColumn, 0, "Mobile Number");
+  }
+  return headers;
 }
 
 // ─── OpeningDetails sheet ─────────────────────────────────────────────────────

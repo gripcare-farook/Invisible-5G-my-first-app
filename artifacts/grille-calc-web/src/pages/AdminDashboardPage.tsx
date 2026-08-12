@@ -42,6 +42,7 @@ interface Project {
   name: string;
   clientName: string;
   clientMobile: string;
+  mobileNumber?: string | null;
   siteLocation: string;
   notes: string;
   status: ProjectStatus;
@@ -155,6 +156,7 @@ function quotationShareText(project: Project): string {
     `Quotation from ${QUOTATION_COMPANY.name}`,
     `Project: ${textOrDash(project.name)}`,
     `Client: ${textOrDash(project.clientName)}`,
+    ...(project.mobileNumber || project.clientMobile ? [`Mobile: ${project.mobileNumber || project.clientMobile}`] : []),
     `Site: ${textOrDash(project.siteLocation)}`,
     `Total amount: ${fmtMoney(project.totalAmount)}`,
     `Balance: ${fmtMoney(project.balanceAmount)}`,

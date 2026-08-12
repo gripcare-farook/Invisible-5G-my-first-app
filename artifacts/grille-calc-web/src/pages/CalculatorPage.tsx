@@ -14,6 +14,7 @@ import { TransportData, calcTransport, emptyTransportData } from "@/lib/transpor
 import { useAuth } from "@/lib/auth-context";
 import TransportForm from "@/components/TransportForm";
 import { LoadedProject } from "@/App";
+import { MOBILE_NUMBER_ERROR, normalizeMobileNumber, validateMobileNumber } from "@/lib/mobile-number";
 
 type SyncState = "idle" | "syncing" | "sent" | "error";
 
@@ -70,6 +71,7 @@ function formToOpening(f: OpeningForm): Opening {
 interface SharedForm {
   projectName: string;
   clientName: string;
+  mobileNumber: string;
   siteLocation: string;
   shippingMode: ShippingMode;
   shippingCostManual: string;
@@ -83,6 +85,7 @@ interface SharedForm {
 function settingsToSharedInputs(s: Settings, f: SharedForm, transportCostOverride?: number): SharedInputs {
   return {
     clientName: f.clientName.trim(),
+    mobileNumber: f.mobileNumber,
     wireCostPerMeter: s.wireCostPerMeter,
     labourCostPerSqft: s.labourCostPerSqft,
     channelCostPerPiece: s.channelCostPerPiece,
@@ -166,6 +169,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
   const [shared, setShared] = useState<SharedForm>({
     projectName: "",
     clientName: "",
+    mobileNumber: "",
     siteLocation: "",
     shippingMode: "manual",
     shippingCostManual: "",
@@ -193,6 +197,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
       ...prev,
       projectName: loadProject.name,
       clientName: loadProject.shared.clientName,
+      mobileNumber: loadProject.shared.mobileNumber ?? "",
       siteLocation: loadProject.shared.siteLocation,
       shippingMode: loadProject.shared.shippingMode,
       shippingCostManual: loadProject.shared.shippingCostManual ? String(loadProject.shared.shippingCostManual) : "",
@@ -238,11 +243,13 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
   const openingData = openings.map(formToOpening);
   const transportResult = shared.shippingMode === "route" && transport ? calcTransport(transport) : null;
   const sharedInputs = settingsToSharedInputs(settings, shared, transportResult?.totalCost);
+  const mobileNumberInvalid = !validateMobileNumber(shared.mobileNumber);
   const totals: ProjectTotals | null = openingData.some((o) => o.width > 0 && o.height > 0)
     ? calculateProject(openingData, sharedInputs)
     : null;
 
   function handleSave() {
+    if (mobileNumberInvalid) return;
     const name = shared.projectName.trim() || shared.clientName.trim() || `Project ${new Date().toLocaleDateString("en-IN")}`;
     const now = Date.now();
     const id = editingId ?? newId();
@@ -265,7 +272,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
     if (!window.confirm("Start a new project? Unsaved changes will be lost.")) return;
     setOpenings([emptyOpening()]);
     setShared({
-      projectName: "", clientName: "", siteLocation: "",
+      projectName: "", clientName: "", mobileNumber: "", siteLocation: "",
       shippingMode: "manual", shippingCostManual: "", distanceKm: "",
       miscCost: "", connectorCost: "", sellingPricePerSqft: "", stiffnerCostMode: "perPiece",
     });
@@ -282,7 +289,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
   }
 
   async function handleSync() {
-    if (!totals || syncState === "syncing") return;
+    if (!totals || mobileNumberInvalid || syncState === "syncing") return;
     const url = settings.appsScriptUrl?.trim();
     if (!url) {
       setSyncState("error");
@@ -361,6 +368,20 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
         <div>
           <Label>Client Name</Label>
           <Input value={shared.clientName} onChange={(e) => setShared((p) => ({ ...p, clientName: e.target.value }))} placeholder="Client name" />
+        </div>
+        <div>
+          <Label>Mobile Number</Label>
+          <Input
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
+            value={shared.mobileNumber}
+            onChange={(e) => setShared((p) => ({ ...p, mobileNumber: normalizeMobileNumber(e.target.value) }))}
+            placeholder="e.g. 9876543210"
+            aria-invalid={mobileNumberInvalid}
+            aria-describedby={mobileNumberInvalid ? "mobile-number-error" : undefined}
+          />
+          {mobileNumberInvalid && <p id="mobile-number-error" className="mt-1 text-xs text-red-600">{MOBILE_NUMBER_ERROR}</p>}
         </div>
         <div>
           <Label>Site Location</Label>
@@ -689,7 +710,8 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
         <button
           type="button"
           onClick={handleSave}
-          className="flex items-center justify-center gap-2 bg-[#1e3a8a] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#1e3a8a]/90 transition-colors"
+          disabled={mobileNumberInvalid}
+          className="flex items-center justify-center gap-2 bg-[#1e3a8a] text-white font-semibold rounded-xl py-3 text-sm hover:bg-[#1e3a8a]/90 disabled:opacity-40 transition-colors"
         >
           <Save size={16} />
           {saveMsg || (editingId ? "Update" : "Save")}
@@ -708,7 +730,7 @@ export default function CalculatorPage({ isActive, loadProject, onProjectLoaded 
       <button
         type="button"
         onClick={handleSync}
-        disabled={!totals || syncState === "syncing"}
+        disabled={!totals || mobileNumberInvalid || syncState === "syncing"}
         className="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-semibold rounded-xl py-3.5 text-sm hover:bg-green-700 disabled:opacity-40 transition-colors mb-4"
       >
         {syncState === "syncing"

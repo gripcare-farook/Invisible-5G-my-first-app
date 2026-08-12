@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { logger } from "../lib/logger";
 import { requireAdmin } from "../middlewares/auth";
+import { parseMobileNumber } from "../lib/mobile-number";
 
 const router: IRouter = Router();
 
@@ -69,6 +70,13 @@ router.post("/sheets/sync", async (req, res) => {
       success: false,
       message: "Invalid payload: missing or unknown action.",
     });
+    return;
+  }
+
+  try {
+    payload["mobileNumber"] = parseMobileNumber(payload["mobileNumber"]);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err instanceof Error ? err.message : "Invalid mobile number." });
     return;
   }
 

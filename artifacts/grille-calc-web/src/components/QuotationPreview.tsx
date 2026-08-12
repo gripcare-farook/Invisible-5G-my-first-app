@@ -6,6 +6,7 @@ export interface QuotationProject {
   name: string;
   clientName: string;
   clientMobile: string;
+  mobileNumber?: string | null;
   siteLocation: string;
   notes: string;
   status: ProjectStatus;
@@ -78,7 +79,9 @@ export function QuotationPreview({ project }: { project: QuotationProject }) {
           <dl className="rounded-lg border border-slate-200 px-4">
             <InfoRow label="Project" value={valueOrDash(project.name)} />
             <InfoRow label="Client" value={valueOrDash(project.clientName)} />
-            <InfoRow label="Mobile" value={valueOrDash(project.clientMobile)} />
+            {(project.mobileNumber || project.clientMobile) && (
+              <InfoRow label="Mobile" value={project.mobileNumber || project.clientMobile} />
+            )}
             <InfoRow label="Site" value={valueOrDash(project.siteLocation)} />
             <InfoRow label="Status" value={PROJECT_STATUS_LABELS[project.status]} />
           </dl>

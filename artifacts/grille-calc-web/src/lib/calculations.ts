@@ -21,6 +21,7 @@ export interface Opening {
 
 export interface SharedInputs {
   clientName: string;
+  mobileNumber?: string;
   wireCostPerMeter: number;
   labourCostPerSqft: number;
   channelCostPerPiece: number;

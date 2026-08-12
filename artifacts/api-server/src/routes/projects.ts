@@ -5,6 +5,7 @@ import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logActivity } from "../lib/activity";
 import { logger } from "../lib/logger";
 import { ensureDatabaseSchema } from "../lib/schema";
+import { parseMobileNumber } from "../lib/mobile-number";
 
 const router: IRouter = Router();
 
@@ -60,10 +61,11 @@ router.get("/projects", requireAuth, async (req, res) => {
 });
 
 router.post("/projects", requireAdmin, async (req, res) => {
-  const { name, clientName = "", clientMobile = "", siteLocation = "", notes = "", status = "new" } = req.body as {
+  const { name, clientName = "", clientMobile = "", mobileNumber, siteLocation = "", notes = "", status = "new" } = req.body as {
     name?: string;
     clientName?: string;
     clientMobile?: string;
+    mobileNumber?: string | null;
     siteLocation?: string;
     notes?: string;
     status?: string;
@@ -81,6 +83,13 @@ router.post("/projects", requireAdmin, async (req, res) => {
     res.status(400).json({ success: false, error: "Client mobile number must be 10 digits." });
     return;
   }
+  let parsedMobileNumber: string;
+  try {
+    parsedMobileNumber = parseMobileNumber(mobileNumber);
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : "Invalid mobile number." });
+    return;
+  }
 
   try {
     await ensureDatabaseSchema();
@@ -92,6 +101,7 @@ router.post("/projects", requireAdmin, async (req, res) => {
         name: name.trim(),
         clientName: clientName.trim(),
         clientMobile: mobile,
+        mobileNumber: parsedMobileNumber || null,
         siteLocation: siteLocation.trim(),
         notes: notes.trim(),
         status: status as any,
@@ -118,11 +128,12 @@ router.patch("/projects/:id", requireAdmin, async (req, res) => {
   await ensureDatabaseSchema();
   const id = String(req.params["id"]);
   const body = req.body as Record<string, unknown>;
-  const { status, name, clientName, clientMobile, siteLocation, notes } = body as {
+  const { status, name, clientName, clientMobile, mobileNumber, siteLocation, notes } = body as {
     status?: string;
     name?: string;
     clientName?: string;
     clientMobile?: string;
+    mobileNumber?: string | null;
     siteLocation?: string;
     notes?: string;
   };
@@ -135,6 +146,15 @@ router.patch("/projects/:id", requireAdmin, async (req, res) => {
     const mobile = cleanMobile(clientMobile);
     if (mobile && mobile.length !== 10) {
       res.status(400).json({ success: false, error: "Client mobile number must be 10 digits." });
+      return;
+    }
+  }
+  let parsedMobileNumber: string | undefined;
+  if (mobileNumber !== undefined) {
+    try {
+      parsedMobileNumber = parseMobileNumber(mobileNumber);
+    } catch (err) {
+      res.status(400).json({ success: false, error: err instanceof Error ? err.message : "Invalid mobile number." });
       return;
     }
   }
@@ -152,6 +172,7 @@ router.patch("/projects/:id", requireAdmin, async (req, res) => {
   if (name !== undefined) patch.name = name.trim();
   if (clientName !== undefined) patch.clientName = clientName.trim();
   if (clientMobile !== undefined) patch.clientMobile = cleanMobile(clientMobile);
+  if (parsedMobileNumber !== undefined) patch.mobileNumber = parsedMobileNumber || null;
   if (siteLocation !== undefined) patch.siteLocation = siteLocation.trim();
   if (notes !== undefined) patch.notes = notes.trim();
 

@@ -79,7 +79,12 @@ export function loadProjects(): SavedProject[] {
     const raw = localStorage.getItem(KEY_PROJECTS);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as SavedProject[];
-    return parsed.sort((a, b) => b.updatedAt - a.updatedAt);
+    return parsed
+      .map((project) => ({
+        ...project,
+        shared: { ...project.shared, mobileNumber: project.shared.mobileNumber ?? "" },
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
   }

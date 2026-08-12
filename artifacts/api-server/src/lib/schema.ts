@@ -16,6 +16,7 @@ async function verifyDatabaseSchema(): Promise<void> {
     ALTER TABLE IF EXISTS projects
       ADD COLUMN IF NOT EXISTS client_name text NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS client_mobile text NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(10),
       ADD COLUMN IF NOT EXISTS site_location text NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS total_amount numeric(12, 2) NOT NULL DEFAULT 0,

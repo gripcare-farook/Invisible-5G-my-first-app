@@ -11,6 +11,7 @@ export interface SheetsSyncPayload {
   projectId: string;
   projectName: string;
   clientName: string;
+  mobileNumber: string;
   siteLocation: string;
   openingsCount: number;
   totalSqft: number;
@@ -72,6 +73,34 @@ export async function syncToGoogleSheets(
     return { sent: false, message: "Apps Script URL not configured in Settings." };
   }
 
+  const payload = buildSheetsSyncPayload(projectId, projectName, openings, shared, totals, notes);
+
+  try {
+    const resp = await fetch("/api/sheets/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appsScriptUrl, payload }),
+    });
+
+    const data = (await resp.json()) as { success?: boolean; message?: string };
+
+    if (!resp.ok || !data.success) {
+      return { sent: false, message: data.message ?? `Server error (HTTP ${resp.status}).` };
+    }
+    return { sent: true, message: data.message ?? "Synced to Google Sheets successfully." };
+  } catch (err) {
+    return { sent: false, message: err instanceof Error ? err.message : "Network error — could not reach sync server." };
+  }
+}
+
+export function buildSheetsSyncPayload(
+  projectId: string,
+  projectName: string,
+  openings: Opening[],
+  shared: SharedInputs,
+  totals: ProjectTotals,
+  notes: string = "",
+): SheetsSyncPayload {
   const savedAt = new Date().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     day: "2-digit",
@@ -88,6 +117,7 @@ export async function syncToGoogleSheets(
     projectId,
     projectName,
     clientName: shared.clientName,
+    mobileNumber: shared.mobileNumber ?? "",
     siteLocation: shared.siteLocation,
     openingsCount: openings.length,
     totalSqft: round2(totals.totalSqft),
@@ -137,32 +167,7 @@ export async function syncToGoogleSheets(
     }),
   };
 
-  try {
-    const resp = await fetch("/api/sheets/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appsScriptUrl, payload }),
-    });
-
-    const data = (await resp.json()) as { success?: boolean; message?: string };
-
-    if (!resp.ok || !data.success) {
-      return {
-        sent: false,
-        message: data.message ?? `Server error (HTTP ${resp.status}).`,
-      };
-    }
-
-    return {
-      sent: true,
-      message: data.message ?? "Synced to Google Sheets successfully.",
-    };
-  } catch (err) {
-    return {
-      sent: false,
-      message: err instanceof Error ? err.message : "Network error — could not reach sync server.",
-    };
-  }
+  return payload;
 }
 
 function round2(v: number): number {

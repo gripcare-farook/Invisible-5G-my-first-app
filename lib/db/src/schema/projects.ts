@@ -1,4 +1,4 @@
-import { numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { numeric, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 export const PROJECT_STATUSES = ["new", "assigned", "in_progress", "completed", "billed"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
@@ -18,6 +18,7 @@ export const projectsTable = pgTable("projects", {
   name: text("name").notNull(),
   clientName: text("client_name").notNull().default(""),
   clientMobile: text("client_mobile").notNull().default(""),
+  mobileNumber: varchar("mobile_number", { length: 10 }),
   siteLocation: text("site_location").notNull().default(""),
   notes: text("notes").notNull().default(""),
   status: text("status", { enum: PROJECT_STATUSES }).notNull().default("new"),
