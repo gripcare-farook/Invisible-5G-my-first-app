@@ -1,0 +1,161 @@
+[
+  {
+    "id": "msi",
+    "name": "MSI Vector 16 HX AI",
+    "sku": "A2XWIG-050US",
+    "specs": "RTX 5080 · 16GB RAM · 1TB",
+    "group": "Primary target",
+    "retailer": "MSI US",
+    "identity": [
+      "A2XWIG-050US"
+    ],
+    "required": [
+      "16GB",
+      "1TB"
+    ],
+    "note": "Factory configuration; 16GB system RAM, not 32GB.",
+    "url": "https://us-store.msi.com/msi-Vector-16-HX-AI-A2XWIG-050US"
+  },
+  {
+    "id": "newegg16",
+    "name": "MSI Vector 16 HX AI",
+    "sku": "A2XWIG-050US",
+    "specs": "RTX 5080 · 16GB RAM · 1TB",
+    "group": "Primary target",
+    "retailer": "Newegg",
+    "identity": [
+      "A2XWIG-050US"
+    ],
+    "required": [
+      "16GB",
+      "1TB"
+    ],
+    "note": "Marketplace seller is tracked separately; verify warranty at checkout.",
+    "url": "https://www.newegg.com/msi-16-geforce-rtx-5080-laptop-gpu-intel-core-ultra-9-275hx-16gb-memory-1-tb-ssd/p/N82E16834156737"
+  },
+  {
+    "id": "legion32",
+    "name": "Lenovo Legion Pro 7i",
+    "sku": "83F50052US",
+    "specs": "RTX 5080 · 32GB RAM · 2TB · OLED",
+    "group": "32GB alternative",
+    "retailer": "B&H",
+    "identity": [
+      "83F50052US"
+    ],
+    "required": [
+      "32GB",
+      "RTX 5080"
+    ],
+    "note": "175W GPU listed in specifications. Discontinued at initial check.",
+    "url": "https://www.bhphotovideo.com/c/product/1875949-REG/lenovo_83f50052us_16_legion_pro_7.html"
+  },
+  {
+    "id": "bestbuy32",
+    "name": "Lenovo Legion Pro 7i",
+    "sku": "83F50012US",
+    "specs": "RTX 5080 · 32GB RAM · 1TB · OLED",
+    "group": "32GB alternative",
+    "retailer": "Best Buy",
+    "identity": [
+      "83F50012US"
+    ],
+    "required": [
+      "32GB",
+      "RTX 5080"
+    ],
+    "note": "Best Buy SKU 12610643; availability needs rechecking.",
+    "url": "https://www.bestbuy.com/product/lenovo-legion-pro-7i-16-2-5k-oled-gaming-laptop-intel-core-ultra-9-275hx-2025-32gb-ram-nvidia-geforce-rtx-5080-1tb-eclipse-black/JJGSH3LVW3/sku/12610643"
+  },
+  {
+    "id": "vector64",
+    "name": "MSI Vector + Duex monitor",
+    "sku": "2WC-000C-0JCS1",
+    "specs": "RTX 5080 · 64GB RAM · 2TB",
+    "group": "64GB seller upgrade",
+    "retailer": "Newegg",
+    "identity": [
+      "MSI Vector AI Gaming Laptop"
+    ],
+    "required": [
+      "64GB DDR5",
+      "2TB",
+      "RTX 5080",
+      "Duex Max"
+    ],
+    "note": "Professionally upgraded by Velztorm; includes monitor. Not factory 050US configuration.",
+    "url": "https://www.newegg.com/msi-vector-16-0-geforce-rtx-5080-64gb-memory-2-tb-ssd/p/2WC-000C-0JCS1"
+  },
+  {
+    "id": "mac15",
+    "name": "MacBook Pro 14 · M5 Pro",
+    "sku": "Z1ML00024",
+    "specs": "48GB RAM · 1TB · 15-core CPU / 16-core GPU",
+    "group": "MacBook target",
+    "retailer": "B&H",
+    "identity": [
+      "Z1ML00024"
+    ],
+    "required": [
+      "48GB",
+      "1TB",
+      "15-Core"
+    ],
+    "note": "Space Black, standard display, 70W adapter.",
+    "url": "https://www.bhphotovideo.com/c/product/1957032-REG/apple_mbp_m5p_03_14_macbook_pro_m5.html"
+  },
+  {
+    "id": "mac18",
+    "name": "MacBook Pro 14 · M5 Pro",
+    "sku": "Z1ML00050",
+    "specs": "48GB RAM · 1TB · 18-core CPU / 20-core GPU",
+    "group": "MacBook target",
+    "retailer": "B&H",
+    "identity": [
+      "Z1ML00050"
+    ],
+    "required": [
+      "48GB",
+      "1TB",
+      "18-Core"
+    ],
+    "note": "Space Black, standard display, 96W adapter. Separate variant history.",
+    "url": "https://www.bhphotovideo.com/c/product/1957131-REG/apple_mbp_m5p_25_14_macbook_pro_m5.html"
+  },
+  {
+    "id": "vector32",
+    "name": "MSI Vector A18 HX",
+    "sku": "A9WIG-223US",
+    "specs": "RTX 5080 · 32GB RAM · 1TB · 18-inch",
+    "group": "32GB alternative",
+    "retailer": "MSI US",
+    "identity": [
+      "A9WIG-223US"
+    ],
+    "required": [
+      "32GB",
+      "1TB",
+      "RTX 5080"
+    ],
+    "note": "Factory 32GB configuration; Ryzen 9 9955HX and larger 18-inch chassis.",
+    "url": "https://us-store.msi.com/Vector-A18-HX-A9WIG-223US"
+  },
+  {
+    "id": "stealth64",
+    "name": "MSI Stealth A18 AI+",
+    "sku": "A3XWIG-009US",
+    "specs": "RTX 5080 · 64GB RAM · 2TB · 18-inch",
+    "group": "64GB alternative",
+    "retailer": "MSI US",
+    "identity": [
+      "A3XWIG-009US"
+    ],
+    "required": [
+      "64GB",
+      "2TB",
+      "RTX 5080"
+    ],
+    "note": "Factory 64GB configuration; Ryzen AI 9 HX 370, UHD Mini LED. Different chassis and power limits.",
+    "url": "https://us-store.msi.com/Stealth-A18-AI-A3XWIG-009US"
+  }
+]
