@@ -3,7 +3,7 @@ import "express-session";
 declare module "express-session" {
   interface SessionData {
     userId: number;
-    userRole: "admin" | "transport" | "labour_contractor" | "labour_worker";
+    userRole: "admin" | "transport" | "labour_contractor" | "labour_worker" | "laptop_watch";
     userName: string;
   }
 }

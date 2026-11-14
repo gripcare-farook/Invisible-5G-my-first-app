@@ -4,9 +4,22 @@ services:
     runtime: node
     plan: free
     healthCheckPath: /api/healthz
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/db push && BASE_PATH=/ pnpm --filter @workspace/grille-calc-web build && pnpm --filter @workspace/api-server build
+    # Apply the reviewed additive SQL migration separately before deploying this revision.
+    buildCommand: pnpm install --frozen-lockfile && BASE_PATH=/ pnpm --filter @workspace/grille-calc-web build && pnpm --filter @workspace/api-server build
     startCommand: node artifacts/api-server/dist/index.mjs
     envVars:
+      - key: NODE_VERSION
+        value: "22.16.0"
+      - key: APP_ORIGIN
+        value: https://grille-calc.onrender.com
+      - key: SESSION_SECRET
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
       - key: NODE_ENV
         value: production
       - key: BASE_PATH

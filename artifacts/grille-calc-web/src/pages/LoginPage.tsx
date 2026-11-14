@@ -6,13 +6,15 @@ import { LogIn, Loader2 } from "lucide-react";
 export default function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const requested = new URLSearchParams(window.location.search).get('next');
+  const destination = (role: Parameters<typeof roleDashboard>[0]) => requested && /^\/laptop-watch(?:\/[a-z0-9-]+)?$/.test(requested) && ['admin','laptop_watch'].includes(role) ? requested : roleDashboard(role);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate(roleDashboard(user.role), { replace: true });
+    if (user) navigate(destination(user.role), { replace: true });
   }, [user, navigate]);
 
   if (user) return null;
@@ -24,7 +26,7 @@ export default function LoginPage() {
     const result = await login(username.trim(), password);
     setLoading(false);
     if (result.success && result.user) {
-      navigate(roleDashboard(result.user.role), { replace: true });
+      navigate(destination(result.user.role), { replace: true });
     } else {
       setError(result.message ?? "Login failed.");
     }

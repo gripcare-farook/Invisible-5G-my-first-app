@@ -20,7 +20,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   next();
 }
 
-export function requireRole(...roles: Array<"admin" | "transport" | "labour_contractor" | "labour_worker">) {
+export function requireRole(...roles: Array<"admin" | "transport" | "labour_contractor" | "labour_worker" | "laptop_watch">) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.session?.userId) {
       res.status(401).json({ success: false, message: "Authentication required." });

@@ -47,3 +47,14 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+tests/.laptop-watch-test.mjs
+artifacts/api-server/.laptop-watch-tests.mjs
+*laptop*export*.json

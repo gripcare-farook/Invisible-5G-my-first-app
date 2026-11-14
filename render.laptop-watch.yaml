@@ -1,0 +1,23 @@
+# Review and provision only after explicit paid-service/deployment approval.
+# Separate from render.yaml so merely committing this file cannot create a paid job.
+services:
+  - type: cron
+    name: laptop-watch-hourly
+    runtime: node
+    plan: starter
+    schedule: "0 * * * *"
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/api-server build
+    startCommand: node artifacts/api-server/dist/laptop-watch-job.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "22.16.0"
+      - key: DATABASE_URL
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Calculator, FileText, FolderOpen, Settings, Truck, LogIn, Loader2 } from "lucide-react";
 import CalculatorPage from "@/pages/CalculatorPage";
 import ProjectsPage from "@/pages/ProjectsPage";
@@ -10,6 +10,8 @@ import TransportPage from "@/pages/TransportPage";
 import AdminDashboardPage from "@/pages/AdminDashboardPage";
 import LabourDashboardPage from "@/pages/LabourDashboardPage";
 import WorkerDashboardPage from "@/pages/WorkerDashboardPage";
+import LaptopWatchPage from '@/pages/LaptopWatchPage';
+import LaptopInvitePage from '@/pages/LaptopInvitePage';
 import { AuthProvider, useAuth, roleDashboard } from "@/lib/auth-context";
 import { SavedProject } from "@/lib/storage";
 import { Opening, SharedInputs } from "@/lib/calculations";
@@ -44,12 +46,21 @@ function RootRedirect() {
   );
 }
 
+function BusinessDashboard() {
+  const {user,loading}=useAuth();
+  if(loading)return <p className="p-4">Loading…</p>;
+  if(user?.role!=='admin')return <Navigate to="/" replace/>;
+  return <><nav className="max-w-5xl mx-auto px-4 py-3 border-b"><Link className="text-primary font-semibold underline" to="/laptop-watch">Laptop Watch ↗</Link></nav><AdminDashboardPage/></>;
+}
+
 function MainApp() {
   const location = useLocation();
   const [tab, setTab] = useState<Tab>(() => (location.pathname === "/ocr" ? "ocr" : "calculator"));
   const [loadProject, setLoadProject] = useState<LoadedProject | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  if(user?.role==='laptop_watch') return <Navigate to="/laptop-watch" replace/>;
 
   function handleLoadProject(p: SavedProject) {
     setLoadProject({
@@ -132,9 +143,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/laptop-watch/invite" element={<LaptopInvitePage />} />
+          <Route path="/laptop-watch" element={<LaptopWatchPage />} />
+          <Route path="/laptop-watch/:id" element={<LaptopWatchPage />} />
           <Route path="/calculator" element={<MainApp />} />
           <Route path="/ocr" element={<MainApp />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin" element={<BusinessDashboard />} />
           <Route path="/transport" element={<TransportPage />} />
           <Route path="/labour" element={<LabourDashboardPage />} />
           <Route path="/worker" element={<WorkerDashboardPage />} />

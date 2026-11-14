@@ -45,8 +45,9 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
+    await new Promise<void>((resolve,reject)=>req.session.regenerate(err=>err?reject(err):resolve()));
     req.session.userId = user.id;
-    req.session.userRole = user.role as "admin" | "transport" | "labour_contractor" | "labour_worker";
+    req.session.userRole = user.role as "admin" | "transport" | "labour_contractor" | "labour_worker" | "laptop_watch";
     req.session.userName = user.name;
 
     logger.info({ userId: user.id, role: user.role }, "auth: login");

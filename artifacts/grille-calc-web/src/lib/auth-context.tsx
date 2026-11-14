@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-export type UserRole = "admin" | "transport" | "labour_contractor" | "labour_worker";
+export type UserRole = "admin" | "transport" | "labour_contractor" | "labour_worker" | "laptop_watch";
 
 export interface AuthUser {
   id: number;
@@ -76,6 +76,7 @@ export function useAuth() {
 }
 
 export function roleDashboard(role: UserRole): string {
+  if (role === 'laptop_watch') return '/laptop-watch';
   if (role === "admin") return "/admin";
   if (role === "transport") return "/transport";
   if (role === "labour_contractor") return "/labour";
