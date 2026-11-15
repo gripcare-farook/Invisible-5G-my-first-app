@@ -62,7 +62,7 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: ^4.21.0
-  vite: ^7.3.2
+  vite: ^7.3.7
   zod: ^4.6.6
 
 autoInstallPeers: false
@@ -81,6 +81,34 @@ overrides:
   body-parser: 2.4.0
   qs: 6.16.1
   path-to-regexp: 8.4.0
+  # Patch vulnerable Expo/React Native development-tool transitive dependencies.
+  shell-quote: 1.11.0
+  tar: 7.5.22
+  # Advisory fixes within the dependencies' existing major versions.
+  "@xmldom/xmldom": 0.8.15
+  "brace-expansion@1": 1.1.20
+  "brace-expansion@2": 2.1.6
+  "brace-expansion@5": 5.0.11
+  browserslist: 4.28.7
+  compression: 1.8.2
+  fast-uri: 3.1.7
+  "js-yaml@3": 3.15.2
+  "js-yaml@4": 4.3.2
+  linkify-it: 5.0.2
+  lodash: 4.18.1
+  markdown-it: 14.3.3
+  "nanoid@3": 3.3.18
+  node-forge: 1.4.3
+  "orval@8": 8.22.0
+  "picomatch@2": 2.3.2
+  "picomatch@4": 4.0.4
+  postcss: 8.5.18
+  source-map-js: 1.2.2
+  undici: 6.29.1
+  "vite@7": 7.3.7
+  "ws@6": 6.2.4
+  "ws@7": 7.5.11
+  "ws@8": 8.21.0
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"

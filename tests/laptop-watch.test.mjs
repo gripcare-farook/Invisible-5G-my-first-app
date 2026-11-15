@@ -5,6 +5,7 @@ import {
   parsePage,
   alertReasons,
 } from "../artifacts/api-server/src/laptop-watch/rules.ts";
+import { compareIndiaUsa } from "../artifacts/api-server/src/laptop-watch/cross-border.ts";
 const catalog = JSON.parse(
   readFileSync(
     new URL(
@@ -125,4 +126,149 @@ test("known stock survives unknown; historical low considers entire comparable h
       "New low in our tracked history",
     ),
   );
+});
+
+const indiaOffer = (overrides = {}) => ({
+  sourceUrl: "https://shop.example.in/laptop",
+  retailer: "India Shop",
+  seller: "India Shop",
+  regionalSku: "IN-SKU-1",
+  configuration: { ram: "32GB", storage: "1TB", gpu: "RTX 5070" },
+  configurationEvidenceUrl: "https://manufacturer.example/specs",
+  condition: "new",
+  purchasable: true,
+  pricePaise: 20000000,
+  checkedAt: new Date().toISOString(),
+  warranty: "India warranty",
+  ...overrides,
+});
+const costLine = (amountPaise, certainty = "confirmed") => ({
+  amountPaise,
+  certainty,
+  sourceUrl: "https://source.example/cost",
+  checkedAt: new Date().toISOString(),
+  ...(certainty === "not_applicable" ? { note: "Confirmed not applicable" } : {}),
+});
+const costs = (overrides = {}) => ({
+  productUsdCents: 100000,
+  productCondition: "new",
+  productWarranty: "US warranty only",
+  productSourceUrl: "https://shop.example.com/laptop",
+  productCheckedAt: new Date().toISOString(),
+  salesTaxUsdCents: costLine(0),
+  usShippingUsdCents: costLine(0, "not_applicable"),
+  usdInrPaisePerUsd: 8000,
+  exchangeRateSourceUrl: "https://fx.example/rate",
+  exchangeRateCheckedAt: new Date().toISOString(),
+  forexFeePaise: costLine(0),
+  deliveryToIndiaPaise: costLine(0),
+  customsAndDutiesPaise: costLine(0),
+  otherAcquisitionPaise: costLine(0),
+  ...overrides,
+});
+const compare = (offers, acquisitionCosts) =>
+  compareIndiaUsa(
+    { ram: "32GB", storage: "1TB", gpu: "RTX 5070" },
+    offers,
+    acquisitionCosts,
+    60 * 60 * 1000,
+  );
+test("India-US 30% uses lowest comparable India total and complete US INR cost", () => {
+  const result = compare(
+    [
+      indiaOffer({ pricePaise: 21000000 }),
+      indiaOffer({ pricePaise: 20000000, retailer: "Cheaper India Shop" }),
+    ],
+    costs({
+      salesTaxUsdCents: costLine(5000),
+      usShippingUsdCents: costLine(2500),
+      usdInrPaisePerUsd: 8000,
+      forexFeePaise: costLine(100000),
+      deliveryToIndiaPaise: costLine(500000),
+      customsAndDutiesPaise: costLine(1000000),
+    }),
+  );
+  assert.equal(result.indiaPricePaise, 20000000);
+  assert.equal(result.usaTotalPaise, 10200000);
+  assert.equal(result.savingsPercent, 49);
+  assert.equal(result.meetsThirtyPercent, true);
+  assert.equal(result.status, "confirmed");
+});
+test("estimated costs show estimated savings but never confirmed 30%", () => {
+  const result = compare(
+    [indiaOffer()],
+    costs({
+      deliveryToIndiaPaise: costLine(100000, "estimated"),
+    }),
+  );
+  assert.equal(result.status, "estimated");
+  assert.equal(result.meetsThirtyPercent, false);
+  assert.equal(result.savingsPercent, 59.5);
+});
+test("unknown costs, non-comparable condition/SKU, and crossed-out prices cannot create 30% claim", () => {
+  assert.equal(
+    compare(
+      [indiaOffer()],
+      costs({ customsAndDutiesPaise: { amountPaise: null, certainty: "unknown", sourceUrl: null, checkedAt: null } }),
+    ).status,
+    "insufficient_data",
+  );
+  assert.equal(
+    compare(
+      [indiaOffer({ configuration: { ram: "32GB", storage: "2TB", gpu: "RTX 5070" } })],
+      costs(),
+    ).status,
+    "insufficient_data",
+  );
+  assert.equal(
+    compare(
+      [indiaOffer({ condition: "open_box" })],
+      costs(),
+    ).status,
+    "insufficient_data",
+  );
+  assert.equal(
+    compare(
+      [indiaOffer({ purchasable: false })],
+      costs(),
+    ).status,
+    "insufficient_data",
+  );
+});
+test("explicitly non-applicable costs are allowed; savings below 30% stay below the rule", () => {
+  const result = compare(
+    [indiaOffer({ pricePaise: 10000000 })],
+    costs({
+      salesTaxUsdCents: costLine(0, "not_applicable"),
+      usShippingUsdCents: costLine(0, "not_applicable"),
+      deliveryToIndiaPaise: costLine(0, "not_applicable"),
+      customsAndDutiesPaise: costLine(0, "not_applicable"),
+    }),
+  );
+  assert.equal(result.savingsPercent, 20);
+  assert.equal(result.meetsThirtyPercent, false);
+});
+test("stale India/US evidence and unsubstantiated zero customs cannot qualify", () => {
+  const old = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const staleIndia = compareIndiaUsa(
+    { ram: "32GB", storage: "1TB", gpu: "RTX 5070" },
+    [indiaOffer({ checkedAt: old })],
+    costs(),
+    60 * 60 * 1000,
+  );
+  assert.equal(staleIndia.status, "insufficient_data");
+
+  const noCustomsEvidence = compare(
+    [indiaOffer()],
+    costs({
+      customsAndDutiesPaise: {
+        amountPaise: 0,
+        certainty: "not_applicable",
+        sourceUrl: null,
+        checkedAt: null,
+        note: "Assumed zero because a friend is carrying it",
+      },
+    }),
+  );
+  assert.equal(noCustomsEvidence.status, "insufficient_data");
 });
