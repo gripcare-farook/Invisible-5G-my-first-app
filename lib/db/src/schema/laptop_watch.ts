@@ -47,6 +47,34 @@ export const laptopChecks = pgTable(
   },
   (t) => [index("lw_latest_check").on(t.listing, t.checkedAt)],
 );
+export const laptopManualObservations = pgTable(
+  "lw_manual_observations",
+  {
+    id: serial("id").primaryKey(),
+    listing: text("listing")
+      .notNull()
+      .references(() => laptopListings.id),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    priceCents: integer("price_cents").notNull(),
+    stock: text("stock").notNull(),
+    seller: text("seller").notNull(),
+    condition: text("condition").notNull(),
+    observedAt: time("observed_at").notNull(),
+    recordedAt: time("recorded_at").notNull().defaultNow(),
+  },
+  (t) => [index("lw_manual_history").on(t.listing, t.observedAt)],
+);
+export const laptopManualCheckLimits = pgTable("lw_manual_check_limits", {
+  listing: text("listing")
+    .primaryKey()
+    .references(() => laptopListings.id),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => usersTable.id),
+  requestedAt: time("requested_at").notNull().defaultNow(),
+});
 export const laptopRuns = pgTable("lw_runs", {
   id: serial("id").primaryKey(),
   startedAt: time("started_at").notNull().defaultNow(),

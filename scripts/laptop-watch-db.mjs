@@ -16,12 +16,16 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const client = await pool.connect();
 try {
   if (action === "migrate")
-    await client.query(
-      await readFile(
-        new URL("../lib/db/migrations/0001_laptop_watch.sql", import.meta.url),
-        "utf8",
-      ),
-    );
+    for (const migration of [
+      "0001_laptop_watch.sql",
+      "0002_laptop_manual_checks.sql",
+    ])
+      await client.query(
+        await readFile(
+          new URL(`../lib/db/migrations/${migration}`, import.meta.url),
+          "utf8",
+        ),
+      );
   const catalog = JSON.parse(
     await readFile(
       new URL(

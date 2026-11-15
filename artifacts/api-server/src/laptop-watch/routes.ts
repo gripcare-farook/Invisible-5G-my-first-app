@@ -4,8 +4,10 @@ import bcrypt from "bcryptjs";
 import { pool } from "@workspace/db";
 import { requireAdmin, requireRole } from "../middlewares/auth";
 import { sameOrigin } from "./access";
-import { catalog, snapshot } from "./store";
+import { catalog, snapshot, recordObservation } from "./store";
 import { validateSubscription, deliverPending } from "./push";
+import { retrieve } from "./worker";
+import { parsePage } from "./rules";
 const router: IRouter = Router();
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 router.use(sameOrigin);
@@ -24,11 +26,9 @@ router.post("/accept-invite", async (req, res) => {
     password.length < 12 ||
     Buffer.byteLength(password) > 72
   ) {
-    res
-      .status(400)
-      .json({
-        message: "Use a valid invite, name, email and a 12–72 byte password.",
-      });
+    res.status(400).json({
+      message: "Use a valid invite, name, email and a 12–72 byte password.",
+    });
     return;
   }
   const client = await pool.connect();
@@ -57,12 +57,10 @@ router.post("/accept-invite", async (req, res) => {
     res.status(201).json({ success: true });
   } catch {
     await client.query("ROLLBACK");
-    res
-      .status(400)
-      .json({
-        message:
-          "Unable to create account. Use a different email or contact the owner.",
-      });
+    res.status(400).json({
+      message:
+        "Unable to create account. Use a different email or contact the owner.",
+    });
   } finally {
     client.release();
   }
@@ -102,6 +100,112 @@ router.get("/listings/:id/history", async (req, res) => {
       )
     ).rows,
   );
+});
+router.post("/listings/:id/check", async (req, res) => {
+  const item = catalog.find((x) => x.id === req.params.id);
+  if (!item) {
+    res.sendStatus(404);
+    return;
+  }
+  const latest = await pool.query(
+    "SELECT status FROM lw_checks WHERE listing=$1 ORDER BY checked_at DESC,id DESC LIMIT 1",
+    [item.id],
+  );
+  if (latest.rows[0]?.status !== "error") {
+    res
+      .status(409)
+      .json({
+        message: "Retry is available after an automatic check failure.",
+      });
+    return;
+  }
+  const limited = await pool.query(
+    `INSERT INTO lw_manual_check_limits(listing,user_id,requested_at) VALUES($1,$2,now())
+     ON CONFLICT(listing) DO UPDATE SET user_id=excluded.user_id,requested_at=now()
+     WHERE lw_manual_check_limits.requested_at<=now()-interval '10 minutes' RETURNING listing`,
+    [item.id, req.session.userId],
+  );
+  if (!limited.rowCount) {
+    res
+      .status(429)
+      .json({
+        message: "This listing was just retried. Please wait up to 10 minutes.",
+      });
+    return;
+  }
+  try {
+    const offer = parsePage(item, await retrieve(item.url));
+    await recordObservation(item.id, offer, randomBytes(24).toString("hex"));
+    res.json({
+      success: true,
+      message: "Retailer offer checked and verified.",
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error &&
+      /^(Product|Exact|Configuration|MSI|Seller|Multiple|Primary|Price|Retailer|FIRECRAWL)/.test(
+        error.message,
+      )
+        ? error.message
+        : "Check failed; previous verified offer retained.";
+    await pool.query(
+      "INSERT INTO lw_checks(listing,status,message) VALUES($1,'error',$2)",
+      [item.id, message],
+    );
+    res.status(502).json({ message });
+  }
+});
+router.post("/listings/:id/manual-observations", async (req, res) => {
+  const item = catalog.find((x) => x.id === req.params.id);
+  const b = req.body ?? {};
+  const observedAt =
+    typeof b.observed_at === "string" ? new Date(b.observed_at) : new Date(NaN);
+  if (
+    !item ||
+    !Number.isInteger(b.price_cents) ||
+    b.price_cents < 10000 ||
+    b.price_cents > 2000000 ||
+    ![
+      "in_stock",
+      "out_of_stock",
+      "discontinued",
+      "preorder",
+      "unknown",
+    ].includes(b.stock) ||
+    typeof b.seller !== "string" ||
+    !b.seller.trim() ||
+    b.seller.trim().length > 160 ||
+    !["new", "non_new", "unknown"].includes(b.condition) ||
+    !Number.isFinite(observedAt.getTime()) ||
+    observedAt > new Date()
+  ) {
+    res
+      .status(400)
+      .json({
+        message:
+          "Enter a valid observed price, stock, seller, condition and non-future time.",
+      });
+    return;
+  }
+  await pool.query(
+    "INSERT INTO lw_manual_observations(listing,user_id,price_cents,stock,seller,condition,observed_at) VALUES($1,$2,$3,$4,$5,$6,$7)",
+    [
+      item.id,
+      req.session.userId,
+      b.price_cents,
+      b.stock,
+      b.seller.trim(),
+      b.condition,
+      observedAt,
+    ],
+  );
+  res
+    .status(201)
+    .json({
+      success: true,
+      message:
+        "Saved as a user-reported observation. It does not change verified history or send deal alerts.",
+    });
 });
 router.put("/follows/:id", async (req, res) => {
   const b = req.body ?? {};
@@ -193,12 +297,10 @@ router.post("/subscriptions", async (req, res) => {
     [req.session.userId, endpoint, JSON.stringify(keys)],
   );
   if (!result.rowCount) {
-    res
-      .status(409)
-      .json({
-        message:
-          "This device is linked to another account. Disable notifications there first.",
-      });
+    res.status(409).json({
+      message:
+        "This device is linked to another account. Disable notifications there first.",
+    });
     return;
   }
   res.json({ success: true });

@@ -37,6 +37,16 @@ type Listing = {
   last_check: { status: string; message: string; checked_at: string } | null;
   follow: Preferences | null;
   observed_low: number | null;
+  failure_streak: number;
+  manual_observations: {
+    id: number;
+    price_cents: number;
+    stock: string;
+    seller: string;
+    condition: string;
+    observed_at: string;
+    recorded_at: string;
+  }[];
 };
 type Snapshot = {
   listings: Listing[];
@@ -82,6 +92,7 @@ function FollowForm({
   const p = item.follow ?? defaults;
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     const data = new FormData(event.currentTarget);
     run(() =>
       laptopApi(`/follows/${item.id}`, "PUT", {
@@ -202,6 +213,111 @@ function PriceHistory({ id }: { id: string }) {
         <Button variant="outline" onClick={() => void load(rows.length)}>
           Load older observations
         </Button>
+      )}
+    </section>
+  );
+}
+function ManualObservationForm({
+  item,
+  run,
+  onMessage,
+}: {
+  item: Listing;
+  run: (action: () => Promise<unknown>) => void;
+  onMessage: (message: string) => void;
+}) {
+  function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const seenAt = new Date(String(data.get("observed_at")));
+    run(async () => {
+      const result = await laptopApi(
+        `/listings/${item.id}/manual-observations`,
+        "POST",
+        {
+          price_cents: Math.round(Number(data.get("price")) * 100),
+          stock: data.get("stock"),
+          seller: data.get("seller"),
+          condition: data.get("condition"),
+          observed_at: seenAt.toISOString(),
+        },
+      );
+      onMessage(result.message);
+      form.reset();
+    });
+  }
+  const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+  return (
+    <section className="mt-4 border-t pt-4 space-y-3">
+      <h3 className="font-semibold">Record what you see</h3>
+      <p className="text-xs text-muted-foreground">
+        Only you can see this report. It stays separate from verified history
+        and never triggers a deal alert.
+      </p>
+      <form onSubmit={save} className="grid grid-cols-2 gap-3">
+        <label>
+          Price (USD)
+          <Input
+            name="price"
+            type="number"
+            min="100"
+            max="20000"
+            step="0.01"
+            required
+          />
+        </label>
+        <label>
+          Seller
+          <Input
+            name="seller"
+            maxLength={160}
+            required
+            placeholder="Retailer or marketplace seller"
+          />
+        </label>
+        <label>
+          Stock
+          <select name="stock" className="block w-full rounded-md border p-2">
+            <option value="in_stock">In stock</option>
+            <option value="out_of_stock">Out of stock</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label>
+          Condition
+          <select
+            name="condition"
+            className="block w-full rounded-md border p-2"
+          >
+            <option value="new">New</option>
+            <option value="non_new">Open-box / used / refurbished</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label className="col-span-2">
+          Time you checked
+          <Input
+            name="observed_at"
+            type="datetime-local"
+            defaultValue={localNow}
+            required
+          />
+        </label>
+        <Button className="col-span-2">Save user-reported price</Button>
+      </form>
+      {!!item.manual_observations.length && (
+        <ul className="divide-y">
+          {item.manual_observations.map((row) => (
+            <li key={row.id} className="py-2 text-sm">
+              <strong>{money(row.price_cents)}</strong> · User-reported ·{" "}
+              {row.seller} · {row.condition} · {row.stock.replaceAll("_", " ")}{" "}
+              · Seen {when(row.observed_at)}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -474,9 +590,28 @@ export default function LaptopWatchPage() {
                 </p>
               )}
               {item.last_check?.status === "error" && (
-                <p className="text-sm text-red-700 mt-2">
-                  Check failed: {item.last_check.message}
-                </p>
+                <div className="text-sm text-red-700 mt-2 space-y-2">
+                  <p>
+                    Check failed: {item.last_check.message}{" "}
+                    {item.failure_streak > 1 &&
+                      `(${item.failure_streak} consecutive failures; last verified offer kept)`}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      void run(async () => {
+                        const result = await laptopApi(
+                          `/listings/${item.id}/check`,
+                          "POST",
+                        );
+                        setMessage(result.message);
+                      })
+                    }
+                  >
+                    Retry check
+                  </Button>
+                </div>
               )}
               <p className="text-sm mt-2">
                 Lowest in our tracked seller/condition history:{" "}
@@ -495,6 +630,14 @@ export default function LaptopWatchPage() {
                 item={item}
                 run={run}
               />
+              {item.follow && (
+                <ManualObservationForm
+                  key={`manual-${item.id}`}
+                  item={item}
+                  run={run}
+                  onMessage={setMessage}
+                />
+              )}
               {id && (
                 <div className="mt-5">
                   <PriceHistory id={id} />

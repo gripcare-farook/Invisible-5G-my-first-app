@@ -85,10 +85,14 @@ export async function snapshot(userId: number) {
   const { rows: listings } = await pool.query(
     `SELECT l.catalog, o.observation AS latest, c.check AS last_check, f.preference AS follow,
     (SELECT min(price_cents) FROM lw_observations h WHERE h.listing=l.id AND h.seller=o.observation->>'seller' AND h.condition=o.observation->>'condition') AS observed_low
+    ,(SELECT count(*)::int FROM lw_checks e WHERE e.listing=l.id AND e.status='error' AND e.checked_at>coalesce((SELECT max(ok.checked_at) FROM lw_checks ok WHERE ok.listing=l.id AND ok.status='ok'),'epoch'::timestamptz)) AS failure_streak
+    ,m.observations AS manual_observations
     FROM lw_listings l
     LEFT JOIN LATERAL (SELECT to_jsonb(x) observation FROM lw_observations x WHERE x.listing=l.id ORDER BY checked_at DESC,id DESC LIMIT 1) o ON true
     LEFT JOIN LATERAL (SELECT to_jsonb(x) check FROM lw_checks x WHERE x.listing=l.id ORDER BY checked_at DESC,id DESC LIMIT 1) c ON true
-    LEFT JOIN LATERAL (SELECT to_jsonb(x) preference FROM lw_follows x WHERE x.listing=l.id AND x.user_id=$1) f ON true ORDER BY l.id`,
+    LEFT JOIN LATERAL (SELECT to_jsonb(x) preference FROM lw_follows x WHERE x.listing=l.id AND x.user_id=$1) f ON true
+    LEFT JOIN LATERAL (SELECT json_agg(to_jsonb(x) ORDER BY x.observed_at DESC) AS observations FROM (SELECT * FROM lw_manual_observations WHERE listing=l.id AND user_id=$1 ORDER BY observed_at DESC LIMIT 10) x) m ON true
+    ORDER BY l.id`,
     [userId],
   );
   const { rows: runs } = await pool.query(
@@ -105,6 +109,8 @@ export async function snapshot(userId: number) {
       last_check: x.last_check,
       follow: x.follow,
       observed_low: x.observed_low,
+      failure_streak: x.failure_streak,
+      manual_observations: x.manual_observations ?? [],
     })),
     runs,
     deliveries,

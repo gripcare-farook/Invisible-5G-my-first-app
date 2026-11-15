@@ -2,7 +2,7 @@
 
 ## Implemented
 
-Nine original exact USA listings, deterministic MVP extraction with tighter system-RAM/SSD/GPU checks, shared PostgreSQL catalog/history, per-account follows/targets/preferences, merged inbox alerts, Web Push, single-use 48-hour revocable invites, protected detail routes, hourly independent Render job, failure visibility and idempotent read-only PC export/import.
+Nine original exact USA listings, deterministic MVP extraction with tighter system-RAM/SSD/GPU checks, shared PostgreSQL catalog/history, per-account follows/targets/preferences, merged inbox alerts, Web Push, single-use 48-hour revocable invites, protected detail routes, hourly independent Render job, failure visibility and idempotent read-only PC export/import. Manual retailer retry is limited to one request per listing per 10 minutes. User-reported observations are private, timestamped, separate from verified prices, and never create deal alerts. Repeated retrieval failures are shown as one streak warning.
 
 Friends get `laptop_watch` accounts. A central backend allowlist rejects their business API requests; admin-only invitation operations also enforce roles. Account identifiers come from the server session. Invite tokens are stored as SHA-256 hashes, sent in URL fragments and consumed atomically. Login regenerates sessions; sessions persist in PostgreSQL. New API writes require the app origin. Push endpoints are restricted to known browser providers to prevent SSRF.
 
@@ -36,20 +36,20 @@ node scripts/laptop-watch-db.mjs migrate
 
 This applies `lib/db/migrations/0001_laptop_watch.sql`, creating only `lw_*` tables/indexes and the persistent `session` table, then seeds catalog metadata (no invented observations/prices). It is repeatable. It does not delete, rewrite or test business/customer data. Roles are text in the existing schema, so no destructive enum conversion is needed.
 
-`render.yaml` deliberately removes automatic `drizzle-kit push` from the build. Run this reviewed migration **before** deploying the new web code, not automatically during a production build. Future schema changes need explicit migrations. Existing users will log in again when moving from the old in-memory session store.
+`render.yaml` deliberately removes automatic `drizzle-kit push` from the build. Run the reviewed migrations **before** deploying the new web code, not automatically during a production build. `scripts/laptop-watch-db.mjs migrate` applies `0001_laptop_watch.sql` and `0002_laptop_manual_checks.sql`. Future schema changes need explicit migrations. Existing users will log in again when moving from the old in-memory session store.
 
 ## Server configuration
 
-| Setting | Web service | Hourly cron |
-| --- | --- | --- |
-| `DATABASE_URL` | Existing Neon database; pooled allowed | Same database, **direct/unpooled URL** required for session advisory lock |
-| `SESSION_SECRET` | Required strong stable secret, preserve existing value | Not needed |
-| `APP_ORIGIN` | `https://grille-calc.onrender.com` (exact origin, no trailing slash) | Not needed |
-| `VAPID_PUBLIC_KEY` | Required | Same value |
-| `VAPID_PRIVATE_KEY` | Required secret | Same secret |
-| `VAPID_SUBJECT` | Valid `mailto:` owner contact or HTTPS URL | Same value |
-| `FIRECRAWL_API_KEY` | Not needed | Required server API key |
-| `NODE_VERSION` | 22.16.0 or compatible newer Node 22 | Same |
+| Setting             | Web service                                                          | Hourly cron                                                               |
+| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `DATABASE_URL`      | Existing Neon database; pooled allowed                               | Same database, **direct/unpooled URL** required for session advisory lock |
+| `SESSION_SECRET`    | Required strong stable secret, preserve existing value               | Not needed                                                                |
+| `APP_ORIGIN`        | `https://grille-calc.onrender.com` (exact origin, no trailing slash) | Not needed                                                                |
+| `VAPID_PUBLIC_KEY`  | Required                                                             | Same value                                                                |
+| `VAPID_PRIVATE_KEY` | Required secret                                                      | Same secret                                                               |
+| `VAPID_SUBJECT`     | Valid `mailto:` owner contact or HTTPS URL                           | Same value                                                                |
+| `FIRECRAWL_API_KEY` | Not needed                                                           | Required server API key                                                   |
+| `NODE_VERSION`      | 22.16.0 or compatible newer Node 22                                  | Same                                                                      |
 
 Generate VAPID keys once using `node scripts/generate-laptop-vapid.mjs`. It writes an ignored local env file without printing keys. Copy values directly into Render's secret settings. Keep a secure backup; rotating keys requires devices to subscribe again. Public VAPID key is intentionally returned to authenticated browsers; private key never leaves the server.
 
@@ -100,7 +100,16 @@ Actual Render account/plan and Neon dev/prod settings; live retailer retrieval t
 
 ## Dependency audit findings and disposition
 
+On 2026-11-15, the production audit reported no known vulnerabilities. The prior Zod high advisory was fixed by updating the workspace catalog to Zod 4.6.6+ (lock resolved 4.6.7); `drizzle-zod@0.8.3` accepts Zod 4 and application code uses no Zod 3-only API. Compatible prior fixes remain: `proxy-addr@2.0.8`, `body-parser@2.4.0`, `qs@6.16.1`, `path-to-regexp@8.4.0`, and React Router `7.18.2`. A full development-dependency audit did not complete in this environment; only the production audit completed successfully.
 
-After those compatible patches and the React Router 7 patch upgrade, the production audit was reduced to **one high advisory**, on `zod@3.25.76` (reachable from `lib/api-zod`, `lib/db`/`drizzle-zod`, and the direct `lib/db` dependency). It covers memory exhaustion during validation of crafted input. The parser limits reduce exposure but do not fully remediate it: a bounded JSON body can still contain a very large number of small array elements. The upstream fix is Zod 4.6.6+, a major upgrade; this codebase and its generated Drizzle schemas/resolvers have not had a Zod 4 migration validated. Keep the finding open for a dedicated compatibility migration rather than claiming it is fixed. Compatible fixes applied: `proxy-addr@2.0.8`, `body-parser@2.4.0`, `qs@6.16.1`, `path-to-regexp@8.4.0`, and `react-router-dom@7.18.2` (same major). The audit output should be rechecked in the Node 22/pnpm environment before release.
+## Manual checks and deal policy status
 
-The integration/unit suites were rerun on 2026-11-14 and passed (16 parser/rule cases plus 8 isolated PGlite integration cases). The computer-use host again reported that browser access is unavailable, so no local visual browser/login flow test is claimed. In the current shell, `node` resolves to 20.9.0 and attempts to start pnpm/Node test processes were blocked by runtime selection or filesystem `EPERM`; the previously completed Node 22 API/web/mobile typechecks and production builds remain recorded above, but should be rerun in the project-pinned Node 22 environment before release.
+Manual retry requires a latest automatic failure, retains the prior verified observation on failure, records a successful retailer retrieval through the normal verified pipeline, and is globally rate-limited per listing for 10 minutes. Manual user-reported prices use `lw_manual_observations`, are account-private, and cannot overwrite verified history or trigger alerts. Migration `0002_laptop_manual_checks.sql` adds both storage tables. No retailer crossed-out price is currently used as a discount baseline.
+
+The remaining 30% reference-price and cross-retailer deal thresholds are awaiting owner approval. Proposed: same exact configuration, seller and new condition; at least five verified in-stock observations over the prior 90 days; median as reference; ignore retailer struck-through prices. Proposed cross-retailer evidence requires at least two same-configuration new/in-stock offers, checked within two hours, with at least a 3% price advantage; a tracked low alert uses a 1% improvement, and repeat alerts require a 1% actual price change. These values must not be enabled until the owner confirms or revises them.
+
+## GPT-6 Astra status
+
+Official OpenAI documentation lists API model ID `gpt-6-astra`, available through the Responses and Chat Completions endpoints. Standard short-context text pricing is $10 per million input tokens and $50 per million output tokens. An illustrative 2,000-input/400-output-token review would cost about $0.04; 125 such calls are about $5 and 250 are about $10. This estimate is an assumption, not measured usage. ChatGPT/Codex model access does not provide a deployed API key. No `OPENAI_API_KEY` was present in the local process environment, so account-level API access could not be verified. No AI integration or billable API call has been enabled; wait for an approved monthly budget and the pending deal-policy decision. The key belongs only in Render's encrypted environment settings, never in source code or the browser.
+
+The new Laptop Watch suite passed 16 extraction/rule tests and 10 isolated PGlite integration tests, including manual observation privacy, verified-price preservation and retry throttling. Existing app regression tests passed 25/25. Library, API, web and mobile typechecks passed; API and web production builds passed (the web build reports its existing large-chunk warning). The production dependency audit passed with zero known vulnerabilities. Browser access was unavailable again, so no visual dashboard/login/target/notification setup QA is claimed. Cloud checks, automatic schedule, Neon connection, push delivery on physical phones, and history import remain unverified until staging/deployment.

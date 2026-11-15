@@ -1,4 +1,4 @@
-import test, { before, after } from "node:test";
+import nodeTest, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import express from "express";
@@ -17,14 +17,29 @@ import {
 } from "../artifacts/api-server/src/laptop-watch/push.ts";
 import { retrieve } from "../artifacts/api-server/src/laptop-watch/worker.ts";
 import { importHistory } from "../scripts/laptop-history.mjs";
+let queue = Promise.resolve();
+const test = (name, fn) =>
+  nodeTest(name, async () => {
+    const previous = queue;
+    let release;
+    queue = new Promise((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      await fn();
+    } finally {
+      release();
+    }
+  });
 let server, origin;
+const httpFetch = globalThis.fetch;
 before(async () => {
   await testDb.exec(
     `CREATE TABLE users(id serial PRIMARY KEY,email text UNIQUE NOT NULL,name text NOT NULL,password_hash text NOT NULL,role text NOT NULL,is_active boolean DEFAULT true); CREATE TABLE notifications(id serial PRIMARY KEY,user_id integer REFERENCES users(id),type text,project_id text,message text);`,
   );
-  await testDb.exec(
-    await readFile("lib/db/migrations/0001_laptop_watch.sql", "utf8"),
-  );
+  for (const file of ["0001_laptop_watch.sql", "0002_laptop_manual_checks.sql"])
+    await testDb.exec(await readFile(`lib/db/migrations/${file}`, "utf8"));
   await seedCatalog();
   await pool.query(
     "INSERT INTO users(email,name,password_hash,role) VALUES('owner@test.local','Owner','unused','admin'),('friend@test.local','Friend','unused','laptop_watch'),('other@test.local','Other','unused','laptop_watch')",
@@ -55,7 +70,7 @@ after(async () => {
   await testDb.close();
 });
 async function request(path, method = "GET", body, user = 1, source = origin) {
-  return fetch(origin + path, {
+  return httpFetch(origin + path, {
     method,
     headers: {
       "x-user": String(user),
@@ -66,10 +81,122 @@ async function request(path, method = "GET", body, user = 1, source = origin) {
   });
 }
 test("migration is repeatable and catalog contains exactly nine listings", async () => {
-  await testDb.exec(
-    await readFile("lib/db/migrations/0001_laptop_watch.sql", "utf8"),
-  );
+  for (const file of ["0001_laptop_watch.sql", "0002_laptop_manual_checks.sql"])
+    await testDb.exec(await readFile(`lib/db/migrations/${file}`, "utf8"));
   assert.equal((await snapshot(1)).listings.length, 9);
+});
+test("manual observations are account-private and do not replace verified data or create deal alerts", async () => {
+  const listing = "vector32";
+  const alertCount = (
+    await pool.query(
+      "SELECT count(*)::int AS n FROM lw_alerts WHERE listing=$1",
+      [listing],
+    )
+  ).rows[0].n;
+  const preferences = {
+    target_cents: null,
+    drop_percent: 3,
+    target_alert: true,
+    drop_alert: true,
+    low_alert: true,
+    restock_alert: true,
+    push_enabled: true,
+  };
+  assert.equal(
+    (await request(`/laptop-watch/follows/${listing}`, "PUT", preferences, 2))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await request(`/laptop-watch/follows/${listing}`, "PUT", preferences, 3))
+      .status,
+    200,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int AS n FROM lw_follows WHERE listing=$1 AND user_id=2",
+        [listing],
+      )
+    ).rows[0].n,
+    1,
+  );
+  await recordObservation(
+    listing,
+    {
+      price_cents: 250000,
+      stock: "in_stock",
+      seller: "MSI US",
+      condition: "new",
+    },
+    "verified-before-manual",
+    new Date("2026-02-01"),
+  );
+  const manual = {
+    price_cents: 100000,
+    stock: "in_stock",
+    seller: "MSI US",
+    condition: "new",
+    observed_at: new Date().toISOString(),
+  };
+  const manualResponse = await request(
+    `/laptop-watch/listings/${listing}/manual-observations`,
+    "POST",
+    manual,
+    2,
+  );
+  assert.equal(manualResponse.status, 201, await manualResponse.text());
+  assert.equal(
+    (
+      await request(
+        `/laptop-watch/listings/${listing}/manual-observations`,
+        "POST",
+        { ...manual, price_cents: 1 },
+        2,
+      )
+    ).status,
+    400,
+  );
+  const ownerItem = (await snapshot(2)).listings.find((x) => x.id === listing);
+  const friendItem = (await snapshot(3)).listings.find((x) => x.id === listing);
+  assert.equal(ownerItem.latest.price_cents, 250000);
+  assert.equal(ownerItem.manual_observations[0].price_cents, 100000);
+  assert.deepEqual(friendItem.manual_observations, []);
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int AS n FROM lw_alerts WHERE listing=$1",
+        [listing],
+      )
+    ).rows[0].n,
+    alertCount,
+  );
+});
+test("manual retries require a failed automatic check and are rate limited without clearing the previous offer", async () => {
+  process.env.FIRECRAWL_API_KEY = "test-only";
+  const listing = "stealth64";
+  await pool.query(
+    "INSERT INTO lw_checks(listing,status,message) VALUES($1,'error','Check failed')",
+    [listing],
+  );
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    Response.json({ success: true, data: { markdown: "unreadable" } });
+  try {
+    assert.equal(
+      (await request(`/laptop-watch/listings/${listing}/check`, "POST")).status,
+      502,
+    );
+    assert.equal(
+      (await request(`/laptop-watch/listings/${listing}/check`, "POST")).status,
+      429,
+    );
+    const item = (await snapshot(2)).listings.find((x) => x.id === listing);
+    assert.equal(item.latest, null);
+    assert.ok(item.failure_streak >= 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 test("anonymous, friend business access and cross-origin writes are denied", async () => {
   assert.equal((await request("/laptop-watch", "GET", null, 0)).status, 401);
