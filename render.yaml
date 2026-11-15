@@ -4,9 +4,9 @@ services:
     runtime: node
     plan: free
     healthCheckPath: /api/healthz
-    # Apply the reviewed additive SQL migration separately before deploying this revision.
+    # Repeatable additive migrations run before the new server accepts requests.
     buildCommand: pnpm install --frozen-lockfile && BASE_PATH=/ pnpm --filter @workspace/grille-calc-web build && pnpm --filter @workspace/api-server build
-    startCommand: node artifacts/api-server/dist/index.mjs
+    startCommand: node scripts/laptop-watch-db.mjs migrate && node artifacts/api-server/dist/index.mjs
     envVars:
       - key: NODE_VERSION
         value: "22.16.0"
