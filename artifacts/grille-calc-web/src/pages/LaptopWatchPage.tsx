@@ -502,7 +502,7 @@ export default function LaptopWatchPage() {
             </p>
           )}
           <p className="text-xs">
-            Hourly cloud checks. A failed check keeps the last verified offer.
+            Scheduled cloud checks. A failed check keeps the last verified offer.
           </p>
         </section>
         <section className="border rounded-lg p-4 space-y-3">

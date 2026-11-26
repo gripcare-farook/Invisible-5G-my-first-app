@@ -6,6 +6,20 @@ import {
   alertReasons,
 } from "../artifacts/api-server/src/laptop-watch/rules.ts";
 import { compareIndiaUsa } from "../artifacts/api-server/src/laptop-watch/cross-border.ts";
+import { campaignConfig } from "../artifacts/api-server/src/laptop-watch/campaign.ts";
+test("temporary campaign runs only in the two approved overnight windows", () => {
+  const env = { LW_CAMPAIGN: "black-friday-2026", LW_LISTING_IDS: "msi,newegg16,mac18", LW_OWNER_EMAIL: "owner@example.com" };
+  for (const [time, active] of [
+    ["2026-11-26T13:59:59Z", false], ["2026-11-26T14:00:00Z", true],
+    ["2026-11-27T04:59:59Z", true], ["2026-11-27T05:00:00Z", false],
+    ["2026-11-27T14:00:00Z", true], ["2026-11-28T04:59:59Z", true],
+    ["2026-11-28T05:00:00Z", false], ["2027-11-26T14:00:00Z", false],
+  ]) assert.equal(campaignConfig(env, new Date(time)).active, active, time);
+  assert.equal(campaignConfig({}), null);
+  assert.throws(() => campaignConfig({ ...env, LW_OWNER_EMAIL: "" }));
+  assert.throws(() => campaignConfig({ ...env, LW_LISTING_IDS: "msi,msi,mac18" }));
+  assert.throws(() => campaignConfig({ ...env, LW_CAMPAIGN: "unknown" }));
+});
 const catalog = JSON.parse(
   readFileSync(
     new URL(

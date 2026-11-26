@@ -409,6 +409,18 @@ test("retailer retrieval retries transient errors but rejects permanent failures
   );
   assert.equal(calls, 1);
 });
+test("campaign sends alerts only to its configured owner", async () => {
+  await pool.query("INSERT INTO lw_follows(user_id,listing,target_cents,drop_percent,push_enabled) VALUES(1,'stealth64',400000,5,true),(3,'stealth64',400000,5,true)");
+  const before = (await pool.query("SELECT * FROM lw_alerts")).rows.length;
+  await recordObservation("stealth64", {price_cents:420000,stock:"in_stock",seller:"MSI US",condition:"new"}, "campaign-baseline", new Date(Date.now()-1000), false, "owner@test.local");
+  await recordObservation("stealth64", {price_cents:309900,stock:"in_stock",seller:"MSI US",condition:"new"}, "campaign-owner-only", new Date(), false, "owner@test.local");
+  const alerts = (await pool.query("SELECT * FROM lw_alerts ORDER BY id")).rows.slice(before);
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].user_id, 1);
+  let sent = 0;
+  await deliverPending(async () => { sent++; return {statusCode:201}; }, "nobody@test.local");
+  assert.equal(sent, 0);
+});
 test("PC history import is idempotent, never creates alerts and preserves newer verified observations", async () => {
   const catalog = JSON.parse(
     await readFile(

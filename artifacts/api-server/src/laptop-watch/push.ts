@@ -45,7 +45,7 @@ export function deliveryOutcome(status: number | undefined, attempts: number) {
     return "failed";
   return "retry";
 }
-export async function deliverPending(send = webpush.sendNotification) {
+export async function deliverPending(send = webpush.sendNotification, recipientEmail?: string) {
   const {
     VAPID_PUBLIC_KEY: publicKey,
     VAPID_PRIVATE_KEY: privateKey,
@@ -55,7 +55,8 @@ export async function deliverPending(send = webpush.sendNotification) {
   const client = await pool.connect();
   try {
     const { rows } = await client.query(
-      `SELECT d.*,s.endpoint,s.keys,a.message,a.listing FROM lw_deliveries d JOIN lw_subscriptions s ON s.id=d.subscription_id JOIN lw_alerts a ON a.id=d.alert_id JOIN users u ON u.id=s.user_id WHERE d.status IN ('pending','retry') AND d.next_attempt_at<=now() AND d.attempts<3 AND u.is_active=true ORDER BY d.id LIMIT 100`,
+      `SELECT d.*,s.endpoint,s.keys,a.message,a.listing FROM lw_deliveries d JOIN lw_subscriptions s ON s.id=d.subscription_id JOIN lw_alerts a ON a.id=d.alert_id JOIN users u ON u.id=s.user_id WHERE d.status IN ('pending','retry') AND d.next_attempt_at<=now() AND d.attempts<3 AND u.is_active=true AND ($1::text IS NULL OR lower(u.email)=$1) ORDER BY d.id LIMIT 100`,
+      [recipientEmail ?? null],
     );
     for (const delivery of rows) {
       // Persist the attempt before network I/O. A crash retries with the same notification tag.

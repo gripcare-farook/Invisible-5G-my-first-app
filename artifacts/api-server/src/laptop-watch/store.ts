@@ -15,6 +15,7 @@ export async function recordObservation(
   receipt: string,
   checkedAt = new Date(),
   imported = false,
+  recipientEmail?: string,
 ) {
   const client = await pool.connect();
   try {
@@ -47,8 +48,8 @@ export async function recordObservation(
         [listing],
       );
       const { rows: followers } = await client.query(
-        "SELECT f.* FROM lw_follows f JOIN users u ON u.id=f.user_id WHERE f.listing=$1 AND u.is_active=true",
-        [listing],
+        "SELECT f.* FROM lw_follows f JOIN users u ON u.id=f.user_id WHERE f.listing=$1 AND u.is_active=true AND ($2::text IS NULL OR lower(u.email)=$2)",
+        [listing, recipientEmail ?? null],
       );
       for (const follow of followers) {
         const reasons = alertReasons(offer, history, follow);

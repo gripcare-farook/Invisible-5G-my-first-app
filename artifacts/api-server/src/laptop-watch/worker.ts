@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { catalog, seedCatalog, recordObservation } from "./store";
 import { parsePage } from "./rules";
 import { deliverPending } from "./push";
+import { campaignConfig } from "./campaign";
 export async function retrieve(url: string, fetcher = fetch) {
   if (!process.env.FIRECRAWL_API_KEY)
     throw new Error("FIRECRAWL_API_KEY is not configured");
@@ -56,6 +57,13 @@ export async function retrieve(url: string, fetcher = fetch) {
   throw new Error("Retailer retrieval failed");
 }
 export async function runChecks() {
+  const campaign = campaignConfig(process.env);
+  if (campaign && !campaign.active) {
+    console.log("Campaign inactive: no retailer checks or notifications.");
+    return;
+  }
+  const selected = campaign ? catalog.filter(x => campaign.ids.includes(x.id)) : catalog;
+  if (campaign && selected.length !== 3) throw new Error("Unknown campaign listing");
   // Session advisory locks require a direct Neon connection, not its transaction pooler.
   if (
     !process.env.DATABASE_URL ||
@@ -80,13 +88,18 @@ export async function runChecks() {
       )
     ).rows[0].id;
     let failures = 0;
-    for (const listing of catalog) {
+    for (const listing of selected) {
+      if (campaign && !campaignConfig(process.env)!.active) break;
       try {
         await recordObservation(
           listing.id,
           parsePage(listing, await retrieve(listing.url)),
           randomUUID(),
+          new Date(),
+          false,
+          campaign?.email,
         );
+        await deliverPending(undefined, campaign?.email);
       } catch (error) {
         failures++;
         // Only our own parser/retrieval messages are safe; never persist provider bodies or credentials.
@@ -107,7 +120,7 @@ export async function runChecks() {
       "UPDATE lw_runs SET finished_at=now(),status=$2,failures=$3 WHERE id=$1",
       [runId, failures ? "partial_failure" : "ok", failures],
     );
-    await deliverPending();
+    await deliverPending(undefined, campaign?.email);
     if (failures) process.exitCode = 1;
   } finally {
     await lock.query("SELECT pg_advisory_unlock(716042)");
