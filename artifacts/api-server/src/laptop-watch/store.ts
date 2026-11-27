@@ -99,7 +99,7 @@ export async function snapshot(userId: number) {
     "SELECT * FROM lw_runs ORDER BY id DESC LIMIT 5",
   );
   const { rows: deliveries } = await pool.query(
-    "SELECT d.id,d.status,d.attempts,d.last_status,a.message,a.listing FROM lw_deliveries d JOIN lw_alerts a ON a.id=d.alert_id WHERE a.user_id=$1 ORDER BY d.id DESC LIMIT 30",
+    "SELECT d.id,d.alert_id,d.subscription_id,d.status,d.attempts,d.last_status,a.message,a.listing FROM lw_deliveries d JOIN lw_alerts a ON a.id=d.alert_id WHERE a.user_id=$1 ORDER BY d.id DESC LIMIT 30",
     [userId],
   );
   return {

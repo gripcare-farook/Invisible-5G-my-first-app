@@ -50,3 +50,12 @@ export async function disableLaptopPush() {
     await subscription.unsubscribe();
   }
 }
+export async function testLaptopPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window))
+    throw new Error("Push is unavailable on this device.");
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  const subscription = await registration?.pushManager.getSubscription();
+  if (!subscription || Notification.permission !== "granted")
+    throw new Error("Enable notifications on this phone first.");
+  return laptopApi("/test-push", "POST", { endpoint: subscription.endpoint });
+}

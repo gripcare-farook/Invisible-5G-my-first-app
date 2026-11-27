@@ -387,6 +387,47 @@ test("push outcomes have bounded retries and expired subscriptions are removed",
     0,
   );
 });
+test("test push targets the requesting browser subscription", async () => {
+  const endpoint = "https://fcm.googleapis.com/fcm/send/current-browser";
+  const otherEndpoint = "https://fcm.googleapis.com/fcm/send/other-browser";
+  const keys = { p256dh: "a".repeat(87), auth: "b".repeat(22) };
+  for (const [url, user] of [
+    [endpoint, 2],
+    [otherEndpoint, 2],
+    [otherEndpoint + "-private", 3],
+  ]) {
+    assert.equal(
+      (
+        await request(
+          "/laptop-watch/subscriptions",
+          "POST",
+          { endpoint: url, keys },
+          user,
+        )
+      ).status,
+      200,
+    );
+  }
+  assert.equal(
+    (
+      await request(
+        "/laptop-watch/test-push",
+        "POST",
+        { endpoint: otherEndpoint + "-private" },
+        2,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await request("/laptop-watch/test-push", "POST", { endpoint }, 2)).status,
+    200,
+  );
+  const { rows } = await pool.query(
+    "SELECT s.endpoint FROM lw_deliveries d JOIN lw_alerts a ON a.id=d.alert_id JOIN lw_subscriptions s ON s.id=d.subscription_id WHERE a.user_id=2 AND a.listing IS NULL",
+  );
+  assert.deepEqual(rows, [{ endpoint }]);
+});
 test("retailer retrieval retries transient errors but rejects permanent failures", async () => {
   process.env.FIRECRAWL_API_KEY = "test-only";
   let calls = 0;
@@ -408,6 +449,30 @@ test("retailer retrieval retries transient errors but rejects permanent failures
     }),
   );
   assert.equal(calls, 1);
+  calls = 0;
+  assert.equal(
+    await retrieve("https://example.com", async () => {
+      calls++;
+      return calls === 1
+        ? Response.json({
+            success: true,
+            data: { metadata: { statusCode: 503 } },
+          })
+        : Response.json({ success: true, data: { markdown: "verified" } });
+    }),
+    "verified",
+  );
+  assert.equal(calls, 2);
+  await assert.rejects(
+    () =>
+      retrieve("https://example.com", async () =>
+        Response.json({
+          success: true,
+          data: { metadata: { statusCode: 403 } },
+        }),
+      ),
+    /Retailer returned HTTP 403/,
+  );
 });
 test("PC history import is idempotent, never creates alerts and preserves newer verified observations", async () => {
   const catalog = JSON.parse(
