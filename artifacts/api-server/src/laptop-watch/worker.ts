@@ -37,11 +37,18 @@ export async function retrieve(url: string, fetcher = fetch) {
         success?: boolean;
         data?: { markdown?: string; metadata?: { statusCode?: number } };
       };
-      if (
-        !body.success ||
-        !body.data?.markdown ||
-        (body.data.metadata?.statusCode ?? 200) >= 400
-      )
+      const retailerStatus = body.data?.metadata?.statusCode;
+      if (typeof retailerStatus === "number" && retailerStatus >= 400) {
+        if (
+          attempt === 0 &&
+          (retailerStatus === 429 || retailerStatus >= 500)
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
+        throw new Error(`Retailer returned HTTP ${retailerStatus}`);
+      }
+      if (!body.success || !body.data?.markdown)
         throw new Error("Retailer content unavailable");
       return body.data.markdown;
     } catch (error) {
@@ -97,6 +104,7 @@ export async function runChecks() {
           )
             ? error.message
             : "Check failed; previous verified offer retained";
+        console.warn(`Laptop Watch listing ${listing.id}: ${message}`);
         await lock.query(
           "INSERT INTO lw_checks(listing,status,message) VALUES($1,'error',$2)",
           [listing.id, message],

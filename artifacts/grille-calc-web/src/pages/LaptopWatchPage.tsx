@@ -7,6 +7,7 @@ import {
   laptopApi,
   enableLaptopPush,
   disableLaptopPush,
+  testLaptopPush,
 } from "@/lib/laptop-watch";
 type Observation = {
   id: number;
@@ -61,6 +62,8 @@ type Snapshot = {
     id: number;
     status: string;
     attempts: number;
+    alert_id: number;
+    subscription_id: number | null;
     message: string;
   }[];
 };
@@ -524,7 +527,7 @@ export default function LaptopWatchPage() {
               variant="outline"
               onClick={() =>
                 void run(async () => {
-                  const result = await laptopApi("/test-push", "POST");
+                  const result = await testLaptopPush();
                   setMessage(result.message);
                 })
               }
@@ -694,12 +697,17 @@ export default function LaptopWatchPage() {
             </summary>
             <p className="text-xs">
               “Accepted” means the push provider accepted it; confirm delivery
-              on your phone.
+              on your phone. One alert can have a delivery per browser
+              subscription.
             </p>
             <ul className="divide-y">
               {data.deliveries.map((d) => (
                 <li key={d.id} className="text-sm py-2">
-                  {d.status} · {d.attempts} attempt(s) · {d.message}
+                  Alert #{d.alert_id} ·{" "}
+                  {d.subscription_id == null
+                    ? "Removed subscription"
+                    : `Subscription #${d.subscription_id}`}{" "}
+                  · {d.status} · {d.attempts} attempt(s) · {d.message}
                 </li>
               ))}
             </ul>

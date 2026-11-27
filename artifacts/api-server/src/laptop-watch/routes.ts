@@ -321,6 +321,13 @@ router.post("/test-push", async (req, res) => {
     res.status(503).json({ message: "Push secrets are not configured." });
     return;
   }
+  const endpoint = req.body?.endpoint;
+  if (typeof endpoint !== "string" || !endpoint) {
+    res
+      .status(400)
+      .json({ message: "Enable notifications on this phone first." });
+    return;
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -336,11 +343,13 @@ router.post("/test-push", async (req, res) => {
       res.status(429).json({ message: "Wait one minute before another test." });
       return;
     }
-    const devices = await client.query(
-      "SELECT id FROM lw_subscriptions WHERE user_id=$1",
-      [req.session.userId],
+    const {
+      rows: [device],
+    } = await client.query(
+      "SELECT id FROM lw_subscriptions WHERE user_id=$1 AND endpoint=$2 FOR KEY SHARE",
+      [req.session.userId, endpoint],
     );
-    if (!devices.rowCount) {
+    if (!device) {
       await client.query("ROLLBACK");
       res
         .status(400)
@@ -360,8 +369,8 @@ router.post("/test-push", async (req, res) => {
       [req.session.userId, message],
     );
     await client.query(
-      "INSERT INTO lw_deliveries(alert_id,subscription_id) SELECT $1,id FROM lw_subscriptions WHERE user_id=$2",
-      [alert.id, req.session.userId],
+      "INSERT INTO lw_deliveries(alert_id,subscription_id) VALUES($1,$2)",
+      [alert.id, device.id],
     );
     await client.query("COMMIT");
     await deliverPending();
